@@ -1,16 +1,38 @@
 import { createClient } from '@supabase/supabase-js'
 import fetchRetry from 'fetch-retry'
 
-// Environment variable validation
+// Environment variable validation with detailed logging
 export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-console.log('Supabase Environment Check:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
-  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 30)}...` : 'MISSING'
-})
+// Utility function to mask sensitive values for logging
+const maskValue = (value: string | undefined): string => {
+  if (!value) return 'MISSING'
+  if (value.length <= 14) return '***MASKED***'
+  return `${value.substring(0, 8)}...${value.substring(value.length - 6)}`
+}
+
+// Enhanced environment variable logging
+console.log('🔍 SUPABASE ENVIRONMENT VARIABLES DEBUG:')
+console.log('=====================================')
+console.log(`VITE_SUPABASE_URL: ${maskValue(supabaseUrl)}`)
+console.log(`VITE_SUPABASE_ANON_KEY: ${maskValue(supabaseAnonKey)}`)
+console.log(`URL is valid format: ${!!(supabaseUrl && supabaseUrl.startsWith('https://') && supabaseUrl.includes('.supabase.co'))}`)
+console.log(`Key is valid length: ${!!(supabaseAnonKey && supabaseAnonKey.length > 50)}`)
+console.log('=====================================')
+
+// Check if environment variables are properly loaded
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ CRITICAL: Missing Supabase environment variables!')
+  console.error('📋 TO FIX THIS ISSUE:')
+  console.error('   1. Create/update your .env file in the project root')
+  console.error('   2. Add these lines with your actual Supabase credentials:')
+  console.error('      VITE_SUPABASE_URL=https://your-project-id.supabase.co')
+  console.error('      VITE_SUPABASE_ANON_KEY=your-anon-key-here')
+  console.error('   3. Get credentials from: https://supabase.com/dashboard/project/your-project/settings/api')
+  console.error('   4. Restart the dev server: npm run dev')
+  console.error('   5. Refresh this page')
+}
 
 // Check if Supabase is properly configured
 export const isSupabaseConfigured = !!(
@@ -20,6 +42,8 @@ export const isSupabaseConfigured = !!(
   supabaseUrl.includes('.supabase.co') &&
   supabaseAnonKey.length > 50 // JWT tokens are typically much longer than 50 characters
 )
+
+console.log(`🔧 Supabase Configuration Status: ${isSupabaseConfigured ? '✅ VALID' : '❌ INVALID'}`)
 
 // Global connection state
 export let isSupabaseOnline = false
@@ -40,7 +64,12 @@ if (!isSupabaseConfigured) {
   // Use dummy values to prevent crashes - the app will show "Server Offline" instead
   finalSupabaseUrl = 'https://dummy.supabase.co'
   finalSupabaseAnonKey = 'dummy-key'
+  
+  console.warn('⚠️ Using dummy values to prevent app crash. Connection will fail until fixed.')
 }
+
+console.log(`🚀 Creating Supabase client with URL: ${maskValue(finalSupabaseUrl)}`)
+console.log(`🔑 Using API key: ${maskValue(finalSupabaseAnonKey)}`)
 
 // Enhanced fetch with retry logic
 const retryFetch = fetchRetry(fetch, {
@@ -155,11 +184,14 @@ export const testConnection = async (timeoutMs = 5000): Promise<boolean> => {
   // Immediately return false if Supabase is not configured
   if (!isSupabaseConfigured) {
     console.warn('⚠️ Supabase connection test skipped: Environment variables not configured')
+    console.warn('📋 TO FIX: Update your .env file and restart the dev server')
     isSupabaseOnline = false
     return false
   }
 
   try {
+    console.log('🔍 Testing Supabase connection...')
+    
     await withRetry(
       async (signal: AbortSignal) => {
         // Use a simple query to test the connection
@@ -185,6 +217,11 @@ export const testConnection = async (timeoutMs = 5000): Promise<boolean> => {
     return true
   } catch (error: any) {
     console.error('❌ Supabase connection test failed:', error.message)
+    console.error('🔧 TROUBLESHOOTING STEPS:')
+    console.error('   1. Verify your .env file has correct Supabase credentials')
+    console.error('   2. Check your internet connection')
+    console.error('   3. Verify your Supabase project is active (not paused)')
+    console.error('   4. Try restarting the dev server: npm run dev')
     isSupabaseOnline = false
     return false
   }
@@ -369,12 +406,14 @@ export const retryConnection = async (): Promise<boolean> => {
 // Initialize connection test on module load
 console.log('🚀 Initializing Supabase client...')
 if (isSupabaseConfigured) {
+  console.log('✅ Environment variables detected, testing connection...')
   testConnection().then(isConnected => {
     isSupabaseOnline = isConnected
     if (isConnected) {
       console.log('🎉 Supabase client initialized successfully!')
     } else {
       console.warn('⚠️ Supabase connection test failed during initialization')
+      console.warn('🔧 Check your network connection and Supabase project status')
     }
   }).catch(error => {
     console.error('💥 Critical error during Supabase initialization:', error)
@@ -382,5 +421,6 @@ if (isSupabaseConfigured) {
   })
 } else {
   console.warn('⚠️ Supabase client initialized with dummy values due to missing configuration')
+  console.warn('📋 Please update your .env file and restart the dev server')
   isSupabaseOnline = false
 }
