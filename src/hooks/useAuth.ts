@@ -25,20 +25,32 @@ export const useAuth = () => {
       try {
         console.log('useAuth: Getting initial session...')
         
-        // CRITICAL FIX: Increase timeout from 10000ms to 30000ms
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 30000)
+        // CRITICAL FIX: Proper timeout handling with Promise.race
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 10000)
         )
         
-        const { data: { session }, error } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any
+        const sessionPromise = supabase.auth.getSession()
+        
+        const result = await Promise.race([sessionPromise, timeoutPromise])
+        
+        // Check if result is an error (timeout case)
+        if (result instanceof Error) {
+          console.error('useAuth: Session fetch timeout');
+          setAuthState({
+            user: null,
+            session: null,
+            profile: null,
+            loading: false,
+            isAuthenticated: false,
+          })
+          return
+        }
+        
+        const { data: { session }, error } = result
         
         if (error) {
           console.error('useAuth: Error getting session:', error)
-          // CRITICAL FIX: Always set loading to false on error
           setAuthState({
             user: null,
             session: null,
@@ -85,7 +97,6 @@ export const useAuth = () => {
           }
         } else {
           console.log('useAuth: No user session found')
-          // CRITICAL FIX: Always set loading to false
           setAuthState({
             user: null,
             session: null,
@@ -141,7 +152,6 @@ export const useAuth = () => {
           })
         } else {
           console.log('useAuth: User signed out')
-          // CRITICAL FIX: Always set loading to false
           setAuthState({
             user: null,
             session: null,

@@ -16,12 +16,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // CRITICAL FIX: Add timeout and retry settings
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false
   },
-  // CRITICAL FIX: Add global timeout
   global: {
     headers: {
       'x-client-info': 'brevedu-web'
@@ -29,20 +27,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// CRITICAL FIX: Test connection with increased timeout from 15000ms to 30000ms
+// CRITICAL FIX: Improved connection test with proper error handling
 const testConnection = async () => {
   try {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 30000)
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Connection timeout')), 10000)
     )
     
     const sessionPromise = supabase.auth.getSession()
     
-    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]) as any
+    const result = await Promise.race([sessionPromise, timeoutPromise])
     
+    // Check if result is an error (timeout case)
+    if (result instanceof Error) {
+      console.error('Supabase connection test failed:', result.message)
+      return
+    }
+    
+    const { error } = result
     if (error) {
       console.error('Supabase connection test failed:', error)
-      // Don't throw - just log the error
     } else {
       console.log('Supabase connection test successful')
     }
@@ -186,18 +190,26 @@ export const dbHelpers = {
     console.log('dbHelpers.getProfile: Getting profile for user:', userId);
     
     try {
-      // CRITICAL FIX: Increase timeout from 8000ms to 30000ms and change .single() to .maybeSingle()
+      // CRITICAL FIX: Proper timeout handling with Promise.race
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
+      )
+      
       const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle()
       
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 30000)
-      )
+      const result = await Promise.race([profilePromise, timeoutPromise])
       
-      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any
+      // Check if result is an error (timeout case)
+      if (result instanceof Error) {
+        console.error('dbHelpers.getProfile: Profile fetch timeout');
+        return { data: null, error: result }
+      }
+      
+      const { data, error } = result
       
       if (error) {
         console.error('dbHelpers.getProfile: Error getting profile:', error);
