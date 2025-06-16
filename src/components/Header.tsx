@@ -22,9 +22,15 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
     }
   };
 
+  // DEBUG: Add console logs to help diagnose the issue
+  console.log('Header Debug Info:', {
+    loading,
+    isAuthenticated,
+    user: user ? { id: user.id, email: user.email } : null,
+    profile: profile ? { full_name: profile.full_name, role: profile.role } : null
+  });
+
   return (
-    // CRITICAL FIX: Use z-[9999] to ensure header is always above any modal/backdrop
-    // Added 'isolate' class to create proper stacking context
     <header className="bg-dark-primary border-b border-dark-tertiary sticky top-0 z-[9999] isolate">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -73,17 +79,21 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
             </Link>
           </nav>
 
-          {/* Auth Section - CRITICAL FIX: Added z-[10] and pointer-events-auto */}
+          {/* Auth Section - Enhanced debugging and visibility */}
           <div className="flex items-center space-x-3 relative z-[10] pointer-events-auto">
+            {/* DEBUG: Show loading state more clearly */}
             {loading ? (
-              <div className="w-8 h-8 animate-pulse bg-dark-secondary rounded-full"></div>
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 animate-pulse bg-dark-secondary rounded-full border-2 border-purple-primary"></div>
+                <span className="text-xs text-gray-400 hidden sm:block">Loading...</span>
+              </div>
             ) : isAuthenticated && user ? (
-              // Authenticated user state
-              <>
+              /* Authenticated User State */
+              <div className="flex items-center space-x-3">
                 {/* User Info */}
                 <div className="hidden sm:flex items-center space-x-2">
                   <span className="text-sm text-gray-300">
-                    Welcome, {profile?.full_name || user.email?.split('@')[0]}
+                    Welcome, {profile?.full_name || user.email?.split('@')[0] || 'User'}
                   </span>
                   {profile?.role === 'premium' && (
                     <span className="bg-yellow-primary text-black px-2 py-1 rounded-lg text-xs font-semibold">
@@ -112,36 +122,49 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 >
                   <User className="w-5 h-5" />
                 </Link>
-              </>
+              </div>
             ) : (
-              // Non-authenticated user state - CRITICAL FIX: Enhanced visibility and click handling
-              <>
+              /* Non-Authenticated User State - CRITICAL FIX */
+              <div className="flex items-center space-x-3">
+                {/* Sign In Button */}
                 <button
                   onClick={() => onAuthClick('login')}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative z-[1]"
-                  style={{ zIndex: 10001 }} // Inline style as fallback
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative"
+                  style={{ 
+                    zIndex: 10001,
+                    backgroundColor: 'transparent',
+                    border: '1px solid transparent'
+                  }}
                 >
                   Sign In
                 </button>
+                
+                {/* Get Started Button */}
                 <button
                   onClick={() => onAuthClick('signup')}
-                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative z-[1]"
-                  style={{ zIndex: 10001 }} // Inline style as fallback
+                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative"
+                  style={{ 
+                    zIndex: 10001,
+                    minWidth: '100px',
+                    minHeight: '36px'
+                  }}
                 >
                   Get Started
                 </button>
+                
                 {/* Profile Link for non-authenticated users */}
                 <Link
                   to="/profile"
-                  className={`p-2 rounded-lg transition-colors pointer-events-auto ${
+                  className={`p-2 rounded-lg transition-colors pointer-events-auto relative ${
                     isActive('/profile') 
                       ? 'bg-purple-primary text-white' 
                       : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
                   }`}
+                  style={{ zIndex: 10001 }}
                 >
                   <User className="w-5 h-5" />
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>

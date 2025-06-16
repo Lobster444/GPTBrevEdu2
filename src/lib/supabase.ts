@@ -3,11 +3,27 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+console.log('Supabase Config Check:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'Missing',
+  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'Missing'
+})
+
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Test connection
+supabase.auth.getSession().then(({ data, error }) => {
+  if (error) {
+    console.error('Supabase connection test failed:', error)
+  } else {
+    console.log('Supabase connection test successful')
+  }
+})
 
 // Database types
 export interface Profile {
@@ -39,7 +55,7 @@ export interface Course {
 // Auth helper functions
 export const authHelpers = {
   signUp: async (email: string, password: string, fullName: string) => {
-    console.log('Attempting signup with:', { email, fullName });
+    console.log('authHelpers.signUp: Attempting signup with:', { email, fullName });
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -52,16 +68,16 @@ export const authHelpers = {
     })
     
     if (error) {
-      console.error('Supabase signup error:', error);
+      console.error('authHelpers.signUp: Supabase signup error:', error);
       return { data: null, error };
     }
 
-    console.log('Signup response:', data);
+    console.log('authHelpers.signUp: Signup response:', data);
     return { data, error: null };
   },
 
   signIn: async (email: string, password: string) => {
-    console.log('Attempting login with:', { email });
+    console.log('authHelpers.signIn: Attempting login with:', { email });
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -69,18 +85,21 @@ export const authHelpers = {
     })
     
     if (error) {
-      console.error('Supabase login error:', error);
+      console.error('authHelpers.signIn: Supabase login error:', error);
       return { data: null, error };
     }
 
-    console.log('Login response:', data);
+    console.log('authHelpers.signIn: Login response:', data);
     return { data, error: null };
   },
 
   signOut: async () => {
+    console.log('authHelpers.signOut: Signing out...');
     const { error } = await supabase.auth.signOut()
     if (error) {
-      console.error('Supabase logout error:', error);
+      console.error('authHelpers.signOut: Supabase logout error:', error);
+    } else {
+      console.log('authHelpers.signOut: Successfully signed out');
     }
     return { error }
   },
@@ -88,7 +107,7 @@ export const authHelpers = {
   getCurrentUser: async () => {
     const { data, error } = await supabase.auth.getUser()
     if (error) {
-      console.error('Get current user error:', error);
+      console.error('authHelpers.getCurrentUser: Get current user error:', error);
     }
     return { data, error }
   },
@@ -96,7 +115,7 @@ export const authHelpers = {
   getCurrentSession: async () => {
     const { data, error } = await supabase.auth.getSession()
     if (error) {
-      console.error('Get current session error:', error);
+      console.error('authHelpers.getCurrentSession: Get current session error:', error);
     }
     return { data, error }
   },
@@ -110,22 +129,36 @@ export const authHelpers = {
 export const dbHelpers = {
   // Profile functions
   getProfile: async (userId: string) => {
+    console.log('dbHelpers.getProfile: Getting profile for user:', userId);
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single()
     
+    if (error) {
+      console.error('dbHelpers.getProfile: Error getting profile:', error);
+    } else {
+      console.log('dbHelpers.getProfile: Profile retrieved:', data);
+    }
+    
     return { data, error }
   },
 
   updateProfile: async (userId: string, updates: Partial<Profile>) => {
+    console.log('dbHelpers.updateProfile: Updating profile for user:', userId, updates);
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', userId)
       .select()
       .single()
+    
+    if (error) {
+      console.error('dbHelpers.updateProfile: Error updating profile:', error);
+    } else {
+      console.log('dbHelpers.updateProfile: Profile updated:', data);
+    }
     
     return { data, error }
   },
