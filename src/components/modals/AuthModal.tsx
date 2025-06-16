@@ -208,61 +208,63 @@ const AuthModal: React.FC<AuthModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/50 backdrop-blur-md transition-all duration-300 animate-backdrop-fade"
             onClick={onClose}
           />
 
           {/* Modal */}
-          <div className="relative bg-dark-secondary rounded-2xl max-w-md w-full shadow-2xl animate-scale-in">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-dark-tertiary">
-              <h2 className="text-2xl font-bold text-white">
-                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-              </h2>
-              <button
-                onClick={onClose}
-                className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
-                disabled={isLoading}
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+          <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal animate-scale-in">
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              disabled={isLoading}
+              aria-label="Close modal"
+            >
+              <X className="w-6 h-6" />
+            </button>
 
             {/* Content */}
-            <div className="p-6">
-              <p className="text-gray-300 mb-6">
-                {mode === 'login' 
-                  ? 'Sign in to access your courses and AI chat sessions'
-                  : 'Join BrevEdu to start your learning journey'
-                }
-              </p>
+            <div className="p-6 sm:p-8">
+              {/* Header */}
+              <div className="mb-6">
+                <h2 className="text-28 font-semibold text-white mb-2">
+                  {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                </h2>
+                <p className="text-base text-gray-text">
+                  {mode === 'login' 
+                    ? 'Sign in to access your courses and AI chat sessions'
+                    : 'Join BrevEdu to start your learning journey'
+                  }
+                </p>
+              </div>
 
               {errors.general && (
-                <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4">
-                  <p>{errors.general}</p>
+                <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-6">
+                  <p className="text-sm">{errors.general}</p>
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {mode === 'signup' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-white mb-2">
                       Full Name
                     </label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder w-5 h-5" />
                       <input
                         type="text"
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
                         disabled={isLoading}
-                        className={`w-full bg-dark-tertiary border ${
-                          errors.name ? 'border-red-500' : 'border-dark-accent'
-                        } rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`w-full bg-gray-input border-2 ${
+                          errors.name ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
+                        } rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -273,20 +275,20 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-white mb-2">
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder w-5 h-5" />
                     <input
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
                       disabled={isLoading}
-                      className={`w-full bg-dark-tertiary border ${
-                        errors.email ? 'border-red-500' : 'border-dark-accent'
-                      } rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`w-full bg-gray-input border-2 ${
+                        errors.email ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
+                      } rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                       placeholder="Enter your email"
                     />
                   </div>
@@ -296,27 +298,27 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-white mb-2">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder w-5 h-5" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
                       disabled={isLoading}
-                      className={`w-full bg-dark-tertiary border ${
-                        errors.password ? 'border-red-500' : 'border-dark-accent'
-                      } rounded-xl pl-10 pr-12 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`w-full bg-gray-input border-2 ${
+                        errors.password ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
+                      } rounded-lg pl-12 pr-12 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                       placeholder="Enter your password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isLoading}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 disabled:opacity-50"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -328,27 +330,27 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
                 {mode === 'signup' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-white mb-2">
                       Confirm Password
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder w-5 h-5" />
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         disabled={isLoading}
-                        className={`w-full bg-dark-tertiary border ${
-                          errors.confirmPassword ? 'border-red-500' : 'border-dark-accent'
-                        } rounded-xl pl-10 pr-12 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                        className={`w-full bg-gray-input border-2 ${
+                          errors.confirmPassword ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
+                        } rounded-lg pl-12 pr-12 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                         placeholder="Confirm your password"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         disabled={isLoading}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 disabled:opacity-50"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
                       >
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
@@ -359,29 +361,31 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-purple-primary hover:bg-purple-dark disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors flex items-center justify-center"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
-                    </>
-                  ) : (
-                    mode === 'login' ? 'Sign In' : 'Create Account'
-                  )}
-                </button>
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-purple-modal hover:bg-purple-modal-hover disabled:opacity-50 disabled:cursor-not-allowed text-black py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
+                        {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
+                      </>
+                    ) : (
+                      mode === 'login' ? 'Sign In' : 'Create Account'
+                    )}
+                  </button>
+                </div>
               </form>
 
               <div className="mt-6 text-center">
-                <p className="text-gray-400">
+                <p className="text-base text-gray-text">
                   {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                   <button
                     onClick={onToggleMode}
                     disabled={isLoading}
-                    className="text-purple-primary hover:text-purple-light font-medium transition-colors disabled:opacity-50"
+                    className="text-white font-medium underline hover:text-gray-300 transition-colors disabled:opacity-50"
                   >
                     {mode === 'login' ? 'Sign up' : 'Sign in'}
                   </button>
@@ -391,7 +395,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
               {mode === 'login' && (
                 <div className="mt-4 text-center">
                   <button 
-                    className="text-gray-400 hover:text-gray-300 text-sm transition-colors disabled:opacity-50"
+                    className="text-gray-text hover:text-gray-300 text-sm transition-colors disabled:opacity-50"
                     disabled={isLoading}
                   >
                     Forgot your password?

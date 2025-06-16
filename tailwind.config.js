@@ -14,11 +14,18 @@ export default {
           primary: '#8B5CF6',
           light: '#A78BFA',
           dark: '#7C3AED',
+          modal: '#ddbffb',
+          'modal-hover': '#ab90db',
         },
         yellow: {
           primary: '#FCD34D',
           light: '#FDE68A',
           dark: '#F59E0B',
+        },
+        gray: {
+          input: '#333333',
+          text: '#dddddd',
+          placeholder: '#999999',
         },
       },
       fontFamily: {
@@ -28,10 +35,17 @@ export default {
         '18': '4.5rem',
         '88': '22rem',
       },
+      fontSize: {
+        '28': ['28px', '36px'],
+      },
+      backdropBlur: {
+        xs: '2px',
+      },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
+        'backdrop-fade': 'backdropFade 0.3s ease-out',
       },
       keyframes: {
         slideUp: {
@@ -46,6 +60,13 @@ export default {
           '0%': { transform: 'scale(0.9)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+        backdropFade: {
+          '0%': { opacity: '0', backdropFilter: 'blur(0px)' },
+          '100%': { opacity: '1', backdropFilter: 'blur(8px)' },
+        },
+      },
+      boxShadow: {
+        'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)',
       },
     },
   },
