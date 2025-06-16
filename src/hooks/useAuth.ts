@@ -86,7 +86,7 @@ export const useAuth = () => {
               console.error('useAuth: Error getting profile:', fetchError)
               profileError = fetchError
             } else {
-              console.log('useAuth: Profile loaded:', profileData)
+              console.log('useAuth: Profile loaded:', profileData ? 'SUCCESS' : 'NO_PROFILE')
               profile = profileData
             }
           } catch (error) {
@@ -154,7 +154,7 @@ export const useAuth = () => {
               if (profileError) {
                 console.error('useAuth: Error getting profile after auth change:', profileError)
               } else {
-                console.log('useAuth: Profile loaded after auth change:', profileData)
+                console.log('useAuth: Profile loaded after auth change:', profileData ? 'SUCCESS' : 'NO_PROFILE')
                 profile = profileData
               }
             } catch (profileError) {
@@ -207,8 +207,8 @@ export const useAuth = () => {
       console.log('useAuth: Refreshing profile...')
       try {
         const { data: profile, error } = await dbHelpers.getProfile(authState.user.id)
-        if (!error && profile) {
-          console.log('useAuth: Profile refreshed:', profile)
+        if (!error) {
+          console.log('useAuth: Profile refreshed:', profile ? 'SUCCESS' : 'NO_PROFILE')
           setAuthState(prev => ({ ...prev, profile, connectionError: null }))
         } else {
           console.error('useAuth: Error refreshing profile:', error)

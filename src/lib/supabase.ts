@@ -71,15 +71,17 @@ export const dbHelpers = {
         setTimeout(() => reject(new Error('Profile fetch timeout')), timeoutMs)
       )
       
+      // CRITICAL FIX: Use maybeSingle() instead of single() to handle cases where no profile exists
+      // This prevents PGRST116 errors when a profile legitimately doesn't exist
       const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
       
       const result = await Promise.race([profilePromise, timeoutPromise])
       
-      console.log('Profile fetch result:', result.data ? 'SUCCESS' : 'NO_DATA')
+      console.log('Profile fetch result:', result.data ? 'SUCCESS' : 'NO_PROFILE_FOUND')
       return result
     } catch (error) {
       console.error('Profile fetch failed:', error)
@@ -94,7 +96,7 @@ export const dbHelpers = {
         .update(updates)
         .eq('id', userId)
         .select()
-        .single()
+        .maybeSingle()
       
       return result
     } catch (error) {
