@@ -424,5 +424,3 @@ if (isSupabaseConfigured) {
   console.warn('📋 Please update your .env file and restart the dev server')
   isSupabaseOnline = false
 }
-
-export { isSupabaseOnline }
