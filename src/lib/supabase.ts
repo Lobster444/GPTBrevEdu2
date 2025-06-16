@@ -384,3 +384,5 @@ if (isSupabaseConfigured) {
   console.warn('⚠️ Supabase client initialized with dummy values due to missing configuration')
   isSupabaseOnline = false
 }
+
+export { isSupabaseOnline }
