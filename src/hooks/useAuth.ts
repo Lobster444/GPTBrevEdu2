@@ -25,10 +25,10 @@ export const useAuth = () => {
       try {
         console.log('useAuth: Getting initial session...')
         
-        // CRITICAL FIX: Add timeout to prevent hanging
+        // CRITICAL FIX: Increase timeout from 10000ms to 30000ms
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 10000)
+          setTimeout(() => reject(new Error('Session timeout')), 30000)
         )
         
         const { data: { session }, error } = await Promise.race([

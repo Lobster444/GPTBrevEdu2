@@ -29,11 +29,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// CRITICAL FIX: Test connection with timeout and better error handling
+// CRITICAL FIX: Test connection with increased timeout from 5000ms to 15000ms
 const testConnection = async () => {
   try {
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 5000)
+      setTimeout(() => reject(new Error('Connection timeout')), 15000)
     )
     
     const sessionPromise = supabase.auth.getSession()
@@ -186,15 +186,15 @@ export const dbHelpers = {
     console.log('dbHelpers.getProfile: Getting profile for user:', userId);
     
     try {
-      // CRITICAL FIX: Add timeout to profile fetch
+      // CRITICAL FIX: Increase timeout from 8000ms to 30000ms and change .single() to .maybeSingle()
       const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
       
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 30000)
       )
       
       const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any
