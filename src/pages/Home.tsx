@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Play, MessageCircle, ArrowRight } from 'lucide-react';
 
-const Home: React.FC = () => {
+interface HomeProps {
+  onCourseClick?: (courseId: string) => void;
+}
+
+const Home: React.FC<HomeProps> = ({ onCourseClick }) => {
   const [activeToggle, setActiveToggle] = useState<'all' | 'plus'>('all');
 
   const featuredCourses = [
@@ -34,6 +38,13 @@ const Home: React.FC = () => {
   const filteredCourses = activeToggle === 'plus' 
     ? featuredCourses.filter(course => course.isPremium)
     : featuredCourses;
+
+  const handleCourseClick = (courseId: string) => {
+    console.log('Home: Course clicked:', courseId);
+    if (onCourseClick) {
+      onCourseClick(courseId);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -102,6 +113,7 @@ const Home: React.FC = () => {
           {filteredCourses.map((course) => (
             <div
               key={course.id}
+              onClick={() => handleCourseClick(course.id)}
               className="bg-dark-secondary rounded-2xl overflow-hidden hover:bg-dark-tertiary transition-colors cursor-pointer group"
             >
               <div className="relative">
@@ -133,7 +145,13 @@ const Home: React.FC = () => {
                 </h3>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400 text-sm">Watch & Learn</span>
-                  <button className="text-purple-primary hover:text-purple-light transition-colors">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCourseClick(course.id);
+                    }}
+                    className="text-purple-primary hover:text-purple-light transition-colors"
+                  >
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

@@ -19,12 +19,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     mode: 'login' | 'signup';
   }>({ isOpen: false, mode: 'login' });
 
+  // Function to open course modal - will be passed to child components
+  const openCourseModal = (courseId: string) => {
+    console.log('Layout: Opening course modal for course:', courseId);
+    setCourseModal({ isOpen: true, courseId });
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header onAuthClick={(mode) => setAuthModal({ isOpen: true, mode })} />
       
       <main className="flex-1 pb-20 md:pb-0">
-        {children}
+        {/* Pass openCourseModal function to children via React.cloneElement */}
+        {React.Children.map(children, child => {
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child, { onCourseClick: openCourseModal } as any);
+          }
+          return child;
+        })}
       </main>
       
       <MobileNav />
