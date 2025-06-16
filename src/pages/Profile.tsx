@@ -1,20 +1,43 @@
 import React from 'react';
-import { User, Settings, Crown, MessageCircle, BookOpen, TrendingUp } from 'lucide-react';
+import { User, Settings, Crown, MessageCircle, BookOpen, TrendingUp, LogOut } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { authHelpers } from '../lib/supabase';
 
 const Profile: React.FC = () => {
-  // Mock user data - will be replaced with actual auth
-  const user = {
-    name: 'Welcome Back!',
-    email: 'Sign in to access your profile',
-    plan: 'free',
-    isAuthenticated: false,
-    stats: {
-      coursesCompleted: 0,
-      totalWatchTime: '0 min',
-      chatSessions: 0,
-      streak: 0,
-    },
+  const { user, profile, isAuthenticated, loading } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await authHelpers.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
+
+  // Mock stats - will be replaced with real data
+  const stats = {
+    coursesCompleted: 0,
+    totalWatchTime: '0 min',
+    chatSessions: 0,
+    streak: 0,
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-dark-secondary rounded-2xl p-6 mb-8 animate-pulse">
+          <div className="flex items-center space-x-6">
+            <div className="w-20 h-20 bg-dark-tertiary rounded-full"></div>
+            <div className="flex-1">
+              <div className="h-6 bg-dark-tertiary rounded mb-2 w-48"></div>
+              <div className="h-4 bg-dark-tertiary rounded mb-3 w-64"></div>
+              <div className="h-6 bg-dark-tertiary rounded w-24"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -26,21 +49,30 @@ const Profile: React.FC = () => {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-white mb-1">
-              {user.name}
+              {isAuthenticated ? (profile?.full_name || 'User') : 'Welcome to BrevEdu!'}
             </h1>
             <p className="text-gray-300 mb-3">
-              {user.email}
+              {isAuthenticated ? user?.email : 'Sign in to access your profile and track your learning progress'}
             </p>
             <div className="flex items-center space-x-3">
-              {user.isAuthenticated ? (
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  user.plan === 'premium' 
-                    ? 'bg-yellow-primary text-black' 
-                    : 'bg-dark-tertiary text-gray-300'
-                }`}>
-                  {user.plan === 'premium' && <Crown className="w-4 h-4 mr-1" />}
-                  {user.plan === 'premium' ? 'BrevEdu Plus' : 'Free Plan'}
-                </span>
+              {isAuthenticated ? (
+                <>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    profile?.role === 'premium' 
+                      ? 'bg-yellow-primary text-black' 
+                      : 'bg-dark-tertiary text-gray-300'
+                  }`}>
+                    {profile?.role === 'premium' && <Crown className="w-4 h-4 mr-1" />}
+                    {profile?.role === 'premium' ? 'BrevEdu Plus' : 'Free Plan'}
+                  </span>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-gray-400 hover:text-gray-300 text-sm font-medium transition-colors flex items-center space-x-1"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </>
               ) : (
                 <button className="bg-purple-primary hover:bg-purple-dark text-white px-6 py-2 rounded-lg font-medium transition-colors">
                   Sign In
@@ -52,7 +84,7 @@ const Profile: React.FC = () => {
       </div>
 
       {/* Auth State - Not Signed In */}
-      {!user.isAuthenticated && (
+      {!isAuthenticated && (
         <div className="bg-dark-secondary rounded-2xl p-8 text-center mb-8">
           <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">
@@ -77,28 +109,28 @@ const Profile: React.FC = () => {
         <div className="bg-dark-secondary rounded-xl p-4 text-center">
           <BookOpen className="w-8 h-8 text-purple-primary mx-auto mb-2" />
           <div className="text-2xl font-bold text-white">
-            {user.stats.coursesCompleted}
+            {stats.coursesCompleted}
           </div>
           <div className="text-sm text-gray-400">Courses</div>
         </div>
         <div className="bg-dark-secondary rounded-xl p-4 text-center">
           <MessageCircle className="w-8 h-8 text-yellow-primary mx-auto mb-2" />
           <div className="text-2xl font-bold text-white">
-            {user.stats.chatSessions}
+            {stats.chatSessions}
           </div>
           <div className="text-sm text-gray-400">AI Chats</div>
         </div>
         <div className="bg-dark-secondary rounded-xl p-4 text-center">
           <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
           <div className="text-2xl font-bold text-white">
-            {user.stats.totalWatchTime}
+            {stats.totalWatchTime}
           </div>
           <div className="text-sm text-gray-400">Watch Time</div>
         </div>
         <div className="bg-dark-secondary rounded-xl p-4 text-center">
           <div className="w-8 h-8 text-orange-400 mx-auto mb-2 text-2xl">🔥</div>
           <div className="text-2xl font-bold text-white">
-            {user.stats.streak}
+            {stats.streak}
           </div>
           <div className="text-sm text-gray-400">Day Streak</div>
         </div>
@@ -131,8 +163,10 @@ const Profile: React.FC = () => {
         <div className="text-center py-8">
           <div className="text-gray-400 mb-4">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>No recent activity</p>
-            <p className="text-sm">Start learning to see your progress here</p>
+            <p>{isAuthenticated ? 'No recent activity' : 'Sign in to see your activity'}</p>
+            <p className="text-sm">
+              {isAuthenticated ? 'Start learning to see your progress here' : 'Track your learning journey'}
+            </p>
           </div>
         </div>
       </div>

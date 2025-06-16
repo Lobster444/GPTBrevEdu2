@@ -99,7 +99,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
     if (message.includes('user already registered') || message.includes('user_already_exists')) {
       return 'An account with this email already exists. Please sign in instead.';
     }
-    if (message.includes('invalid login credentials')) {
+    if (message.includes('invalid login credentials') || message.includes('invalid credentials')) {
       return 'Invalid email or password. Please check your credentials.';
     }
     if (message.includes('email not confirmed')) {
@@ -128,6 +128,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
     
     try {
       if (mode === 'signup') {
+        console.log('Starting signup process...');
         const { data, error } = await authHelpers.signUp(
           formData.email.trim(),
           formData.password,
@@ -135,29 +136,38 @@ const AuthModal: React.FC<AuthModalProps> = ({
         );
 
         if (error) {
+          console.error('Signup error:', error);
           throw error;
         }
 
+        console.log('Signup successful:', data);
+
         if (data.user) {
-          showToast('Account created successfully! Please check your email to verify your account.', 'success');
+          showToast('Account created successfully! You are now signed in.', 'success');
           // Close modal after a short delay to show the success message
           setTimeout(() => {
             onClose();
-          }, 2000);
+          }, 1500);
         }
       } else {
+        console.log('Starting login process...');
         const { data, error } = await authHelpers.signIn(
           formData.email.trim(),
           formData.password
         );
 
         if (error) {
+          console.error('Login error:', error);
           throw error;
         }
 
+        console.log('Login successful:', data);
+
         if (data.user) {
           showToast('Welcome back! You have been signed in successfully.', 'success');
-          onClose();
+          setTimeout(() => {
+            onClose();
+          }, 1000);
         }
       }
     } catch (error: any) {
@@ -182,7 +192,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         // Automatically switch to login mode
         setTimeout(() => {
           onToggleMode();
-        }, 1000);
+        }, 1500);
       } else {
         const errorMessage = getSupabaseErrorMessage(error);
         setErrors({ general: errorMessage });

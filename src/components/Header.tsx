@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { GraduationCap, User, Star } from 'lucide-react';
+import { GraduationCap, User, Star, LogOut } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { authHelpers } from '../lib/supabase';
 
 interface HeaderProps {
   onAuthClick: (mode: 'login' | 'signup') => void;
@@ -8,8 +10,17 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
   const location = useLocation();
+  const { user, profile, isAuthenticated, loading } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    try {
+      await authHelpers.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <header className="bg-dark-primary border-b border-dark-tertiary sticky top-0 z-40">
@@ -60,30 +71,71 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
             </Link>
           </nav>
 
-          {/* Auth Buttons */}
+          {/* Auth Section */}
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => onAuthClick('login')}
-              className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => onAuthClick('signup')}
-              className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              Get Started
-            </button>
-            <Link
-              to="/profile"
-              className={`p-2 rounded-lg transition-colors ${
-                isActive('/profile') 
-                  ? 'bg-purple-primary text-white' 
-                  : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
-              }`}
-            >
-              <User className="w-5 h-5" />
-            </Link>
+            {loading ? (
+              <div className="w-8 h-8 animate-pulse bg-dark-secondary rounded-full"></div>
+            ) : isAuthenticated && user ? (
+              <>
+                {/* User Info */}
+                <div className="hidden sm:flex items-center space-x-2">
+                  <span className="text-sm text-gray-300">
+                    Welcome, {profile?.full_name || user.email?.split('@')[0]}
+                  </span>
+                  {profile?.role === 'premium' && (
+                    <span className="bg-yellow-primary text-black px-2 py-1 rounded-lg text-xs font-semibold">
+                      PLUS
+                    </span>
+                  )}
+                </div>
+                
+                {/* Sign Out Button */}
+                <button
+                  onClick={handleSignOut}
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center space-x-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+                
+                {/* Profile Link */}
+                <Link
+                  to="/profile"
+                  className={`p-2 rounded-lg transition-colors ${
+                    isActive('/profile') 
+                      ? 'bg-purple-primary text-white' 
+                      : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onAuthClick('login')}
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => onAuthClick('signup')}
+                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Get Started
+                </button>
+                <Link
+                  to="/profile"
+                  className={`p-2 rounded-lg transition-colors ${
+                    isActive('/profile') 
+                      ? 'bg-purple-primary text-white' 
+                      : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
