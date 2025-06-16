@@ -14,18 +14,11 @@ export default {
           primary: '#8B5CF6',
           light: '#A78BFA',
           dark: '#7C3AED',
-          modal: '#ddbffb',
-          'modal-hover': '#ab90db',
         },
         yellow: {
           primary: '#FCD34D',
           light: '#FDE68A',
           dark: '#F59E0B',
-        },
-        gray: {
-          input: '#333333',
-          text: '#dddddd',
-          placeholder: '#999999',
         },
       },
       fontFamily: {
@@ -35,18 +28,13 @@ export default {
         '18': '4.5rem',
         '88': '22rem',
       },
-      fontSize: {
-        '28': ['28px', '36px'],
-      },
-      backdropBlur: {
-        xs: '2px',
-      },
-      // CRITICAL FIX: Enhanced z-index scale for proper stacking
+      // Enhanced z-index scale for proper modal stacking
       zIndex: {
-        '9998': '9998',
-        '9999': '9999',
-        '10000': '10000',
-        '10001': '10001',
+        '9997': '9997', // Course modal backdrop
+        '9998': '9998', // Auth modal backdrop  
+        '9999': '9999', // Header
+        '10000': '10000', // Modal content
+        '10001': '10001', // Modal close buttons and interactive elements
       },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',
