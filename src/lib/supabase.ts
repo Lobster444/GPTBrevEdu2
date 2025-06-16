@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-// CRITICAL: Validate environment variables
+// Environment variable validation
 export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -11,23 +11,34 @@ console.log('Supabase Environment Check:', {
   key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 30)}...` : 'MISSING'
 })
 
-// CRITICAL: Throw errors if environment variables are missing
-if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url') {
-  console.error('❌ CRITICAL: VITE_SUPABASE_URL is missing or not configured')
-  console.error('📝 Please update your .env file with your actual Supabase project URL')
-  console.error('🔗 Get it from: https://supabase.com/dashboard/project/your-project/settings/api')
-  throw new Error('VITE_SUPABASE_URL is required. Please check your .env file.')
-}
+// Check if Supabase is properly configured
+export const isSupabaseConfigured = !!(
+  supabaseUrl && 
+  supabaseAnonKey && 
+  supabaseUrl !== 'your_supabase_project_url' &&
+  supabaseUrl !== 'https://your-project-ref.supabase.co' &&
+  supabaseAnonKey !== 'your_supabase_anon_key' &&
+  supabaseAnonKey !== 'your_anon_key_here'
+)
 
-if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key') {
-  console.error('❌ CRITICAL: VITE_SUPABASE_ANON_KEY is missing or not configured')
-  console.error('📝 Please update your .env file with your actual Supabase anon key')
-  console.error('🔗 Get it from: https://supabase.com/dashboard/project/your-project/settings/api')
-  throw new Error('VITE_SUPABASE_ANON_KEY is required. Please check your .env file.')
+// Handle missing or invalid environment variables gracefully
+let finalSupabaseUrl = supabaseUrl
+let finalSupabaseAnonKey = supabaseAnonKey
+
+if (!isSupabaseConfigured) {
+  console.error('❌ CRITICAL: Supabase environment variables are missing or not configured')
+  console.error('📝 Please update your .env file with your actual Supabase credentials')
+  console.error('🔗 Get them from: https://supabase.com/dashboard/project/your-project/settings/api')
+  console.warn('💡 You can create .env from .env.example and set your Supabase keys.')
+  console.warn('🔄 After updating .env, restart the development server with: npm run dev')
+  
+  // Use dummy values to prevent crashes - the app will show "Server Offline" instead
+  finalSupabaseUrl = 'https://dummy.supabase.co'
+  finalSupabaseAnonKey = 'dummy-key'
 }
 
 // Create Supabase client with proper configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(finalSupabaseUrl, finalSupabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -43,6 +54,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Test connection function with improved timeout handling
 export const testConnection = async (timeoutMs = 60000): Promise<boolean> => {
+  // Immediately return false if Supabase is not configured
+  if (!isSupabaseConfigured) {
+    console.warn('⚠️ Supabase connection test skipped: Environment variables not configured')
+    return false
+  }
+
   try {
     console.log('🔄 Testing Supabase connection...')
     
@@ -76,6 +93,10 @@ export interface Profile {
 // Database helpers with improved timeout protection
 export const dbHelpers = {
   async getProfile(userId: string, timeoutMs = 60000): Promise<{ data: Profile | null; error: any }> {
+    if (!isSupabaseConfigured) {
+      return { data: null, error: new Error('Supabase not configured') }
+    }
+
     try {
       console.log('🔄 Fetching profile for user:', userId)
       
@@ -102,6 +123,10 @@ export const dbHelpers = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<{ data: Profile | null; error: any }> {
+    if (!isSupabaseConfigured) {
+      return { data: null, error: new Error('Supabase not configured') }
+    }
+
     try {
       console.log('🔄 Updating profile for user:', userId)
       
@@ -124,6 +149,10 @@ export const dbHelpers = {
 // Auth helpers with improved error handling
 export const authHelpers = {
   async signUp(email: string, password: string, fullName: string) {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please check your environment variables.')
+    }
+
     try {
       console.log('🔄 Starting signup process...')
       
@@ -146,6 +175,10 @@ export const authHelpers = {
   },
 
   async signIn(email: string, password: string) {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please check your environment variables.')
+    }
+
     try {
       console.log('🔄 Starting signin process...')
       
@@ -163,6 +196,10 @@ export const authHelpers = {
   },
 
   async signOut() {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured. Please check your environment variables.')
+    }
+
     try {
       console.log('🔄 Starting signout process...')
       
@@ -179,12 +216,16 @@ export const authHelpers = {
 
 // Initialize connection test on module load
 console.log('🚀 Initializing Supabase client...')
-testConnection().then(isConnected => {
-  if (isConnected) {
-    console.log('🎉 Supabase client initialized successfully!')
-  } else {
-    console.warn('⚠️ Supabase connection test failed during initialization')
-  }
-}).catch(error => {
-  console.error('💥 Critical error during Supabase initialization:', error)
-})
+if (isSupabaseConfigured) {
+  testConnection().then(isConnected => {
+    if (isConnected) {
+      console.log('🎉 Supabase client initialized successfully!')
+    } else {
+      console.warn('⚠️ Supabase connection test failed during initialization')
+    }
+  }).catch(error => {
+    console.error('💥 Critical error during Supabase initialization:', error)
+  })
+} else {
+  console.warn('⚠️ Supabase client initialized with dummy values due to missing configuration')
+}

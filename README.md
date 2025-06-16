@@ -39,6 +39,13 @@ npm install
 
 Create a `.env` file in the project root:
 
+```bash
+# Copy the example file and edit it
+cp .env.example .env
+```
+
+Then edit `.env` with your actual credentials:
+
 ```env
 VITE_SUPABASE_URL=your_project_url
 VITE_SUPABASE_ANON_KEY=your_anon_key
@@ -107,6 +114,24 @@ The app uses Supabase Auth with email/password authentication:
 
 ## 🚨 Troubleshooting
 
+⚠️ **If you see "VITE_SUPABASE_URL is required" error:**
+
+1. **Copy `.env.example` to `.env`**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Fill in values from Supabase Dashboard**:
+   - Go to [Supabase Dashboard](https://supabase.com/dashboard)
+   - Navigate to Project Settings → API
+   - Copy your Project URL and anon/public key
+   - Paste them into your `.env` file
+
+3. **Restart development server**:
+   ```bash
+   npm run dev
+   ```
+
 ### Connection Issues
 
 If you see "Server Offline" or connection timeouts:
@@ -129,6 +154,7 @@ If authentication or data loading fails:
 - **"Environment variables missing"**: Copy `.env.example` to `.env` and add your credentials
 - **"Profile not found"**: Check if the profiles table exists and has proper triggers
 - **"Infinite loading"**: Usually indicates Supabase connection issues
+- **"VITE_SUPABASE_URL is required"**: Follow the troubleshooting steps above
 
 ## 📚 Additional Documentation
 
