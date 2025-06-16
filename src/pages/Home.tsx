@@ -41,9 +41,14 @@ const Home: React.FC<HomeProps> = ({ onCourseClick, onAuthClick }) => {
     : featuredCourses;
 
   const handleCourseClick = (courseId: string) => {
-    console.log('Home: Course clicked:', courseId);
+    console.log('Home: Course tile clicked:', courseId);
+    console.log('Home: onCourseClick prop available:', !!onCourseClick);
+    
     if (onCourseClick) {
+      console.log('Home: Calling onCourseClick with courseId:', courseId);
       onCourseClick(courseId);
+    } else {
+      console.error('Home: onCourseClick prop is not available!');
     }
   };
 
@@ -121,7 +126,10 @@ const Home: React.FC<HomeProps> = ({ onCourseClick, onAuthClick }) => {
           {filteredCourses.map((course) => (
             <div
               key={course.id}
-              onClick={() => handleCourseClick(course.id)}
+              onClick={() => {
+                console.log('Course card clicked:', course.id);
+                handleCourseClick(course.id);
+              }}
               className="bg-dark-secondary rounded-2xl overflow-hidden hover:bg-dark-tertiary transition-colors cursor-pointer group"
             >
               <div className="relative">
@@ -156,6 +164,7 @@ const Home: React.FC<HomeProps> = ({ onCourseClick, onAuthClick }) => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      console.log('Arrow button clicked:', course.id);
                       handleCourseClick(course.id);
                     }}
                     className="text-purple-primary hover:text-purple-light transition-colors"

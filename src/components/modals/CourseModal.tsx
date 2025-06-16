@@ -149,8 +149,14 @@ const CourseModal: React.FC<CourseModalProps> = ({
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
 
+  // Debug logging
+  console.log('CourseModal: Rendering with props:', { isOpen, courseId });
+  console.log('CourseModal: Modal should be visible:', isOpen);
+
   // Get course data
   const course = courseId ? mockCourses[courseId as keyof typeof mockCourses] : null;
+
+  console.log('CourseModal: Course data:', course);
 
   // Mock user chat session data - in a real app, this would come from the database
   const userChatData = {
@@ -159,11 +165,15 @@ const CourseModal: React.FC<CourseModalProps> = ({
   };
 
   useEffect(() => {
+    console.log('CourseModal: useEffect triggered, isOpen:', isOpen);
+    
     if (isOpen) {
+      console.log('CourseModal: Modal is opening, setting body overflow to hidden');
       document.body.style.overflow = 'hidden';
       setIsVideoLoading(true);
       setVideoError(false);
     } else {
+      console.log('CourseModal: Modal is closing, restoring body overflow');
       document.body.style.overflow = 'unset';
     }
 
@@ -207,24 +217,47 @@ const CourseModal: React.FC<CourseModalProps> = ({
     setVideoError(true);
   };
 
-  if (!isOpen || !course) return null;
+  const handleClose = () => {
+    console.log('CourseModal: Close button clicked');
+    onClose();
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      console.log('CourseModal: Backdrop clicked');
+      onClose();
+    }
+  };
+
+  if (!isOpen || !course) {
+    console.log('CourseModal: Not rendering - isOpen:', isOpen, 'course:', !!course);
+    return null;
+  }
+
+  console.log('CourseModal: Rendering modal for course:', course.title);
 
   const isChatDisabled = !isSupabaseReachable || (isAuthenticated && userChatData.chatSessionsToday >= userChatData.chatLimit);
 
   return (
-    <div className="fixed inset-0 z-[9997] overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-[9997] overflow-y-auto"
+      onClick={handleBackdropClick}
+    >
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
         <div 
           className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
-          onClick={onClose}
+          onClick={handleBackdropClick}
         />
 
         {/* Modal */}
-        <div className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-modal animate-scale-in">
+        <div 
+          className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-modal animate-scale-in"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Close Button */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm"
             aria-label="Close modal"
           >
