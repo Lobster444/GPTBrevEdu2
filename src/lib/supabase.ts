@@ -15,10 +15,9 @@ console.log('Supabase Environment Check:', {
 export const isSupabaseConfigured = !!(
   supabaseUrl && 
   supabaseAnonKey && 
-  supabaseUrl !== 'your_supabase_project_url' &&
-  supabaseUrl !== 'https://your-project-ref.supabase.co' &&
-  supabaseAnonKey !== 'your_supabase_anon_key' &&
-  supabaseAnonKey !== 'your_anon_key_here'
+  supabaseUrl.startsWith('https://') &&
+  supabaseUrl.includes('.supabase.co') &&
+  supabaseAnonKey.length > 50 // JWT tokens are typically much longer than 50 characters
 )
 
 // Handle missing or invalid environment variables gracefully
