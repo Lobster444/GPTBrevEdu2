@@ -1,15 +1,12 @@
 export interface TavusConversationRequest {
   replica_id: string
-  conversation_name?: string
+  conversation_name: string
   conversational_context?: string
   custom_greeting?: string
-  callback_url?: string
   properties?: {
     max_call_duration?: number
     participant_left_timeout?: number
     participant_absent_timeout?: number
-    enable_recording?: boolean
-    enable_transcription?: boolean
   }
 }
 
@@ -17,7 +14,7 @@ export interface TavusConversationResponse {
   conversation_id: string
   conversation_url: string
   status: string
-  created_at: string
+  created_at?: string
 }
 
 export interface ChatSessionInput {

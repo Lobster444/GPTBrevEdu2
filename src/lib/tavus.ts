@@ -3,15 +3,12 @@ import { supabaseUrl } from './supabase'
 // CRITICAL: Validate environment variables
 const tavusApiKey = import.meta.env.VITE_TAVUS_API_KEY
 const tavusReplicaId = import.meta.env.VITE_TAVUS_REPLICA_ID
-const tavusPersonaId = import.meta.env.VITE_TAVUS_PERSONA_ID
 
 console.log('Tavus Environment Check:', {
   hasApiKey: !!tavusApiKey,
   hasReplicaId: !!tavusReplicaId,
-  hasPersonaId: !!tavusPersonaId,
   apiKey: tavusApiKey ? `${tavusApiKey.substring(0, 10)}...` : 'MISSING',
-  replicaId: tavusReplicaId ? `${tavusReplicaId.substring(0, 10)}...` : 'MISSING',
-  personaId: tavusPersonaId ? `${tavusPersonaId.substring(0, 10)}...` : 'MISSING'
+  replicaId: tavusReplicaId ? `${tavusReplicaId.substring(0, 10)}...` : 'MISSING'
 })
 
 // Tavus configuration object
@@ -26,9 +23,7 @@ export const isTavusConfigured = (): boolean => {
     tavusApiKey && 
     tavusApiKey !== 'your_tavus_api_key' &&
     tavusReplicaId && 
-    tavusReplicaId !== 'your_tavus_replica_id' &&
-    tavusPersonaId && 
-    tavusPersonaId !== 'your_tavus_persona_id'
+    tavusReplicaId !== 'your_tavus_replica_id'
   )
 }
 
@@ -41,16 +36,11 @@ const validateTavusConfig = () => {
   if (!tavusReplicaId || tavusReplicaId === 'your_tavus_replica_id') {
     throw new Error('VITE_TAVUS_REPLICA_ID is required. Please check your .env file.')
   }
-  
-  if (!tavusPersonaId || tavusPersonaId === 'your_tavus_persona_id') {
-    throw new Error('VITE_TAVUS_PERSONA_ID is required. Please check your .env file.')
-  }
 }
 
-// Tavus API types
+// Tavus API types for My Conversations
 export interface TavusConversationRequest {
   replica_id: string
-  persona_id?: string
   conversation_name: string
   conversational_context?: string
   custom_greeting?: string
@@ -67,9 +57,9 @@ export interface TavusConversationResponse {
   status: string
 }
 
-// Create Tavus conversation
+// Create Tavus conversation using My Conversations API
 export const createTavusConversation = async (
-  request: Omit<TavusConversationRequest, 'replica_id' | 'persona_id'>
+  request: Omit<TavusConversationRequest, 'replica_id'>
 ): Promise<TavusConversationResponse> => {
   console.log('🔄 Creating Tavus conversation...')
   
@@ -78,7 +68,6 @@ export const createTavusConversation = async (
   
   const payload: TavusConversationRequest = {
     replica_id: tavusReplicaId!,
-    persona_id: tavusPersonaId!,
     ...request,
     properties: {
       max_call_duration: 300, // 5 minutes default
@@ -144,76 +133,25 @@ export const endTavusConversation = async (conversationId: string): Promise<void
 
 // Prompt templates for different course topics and difficulty levels
 export const promptTemplates = {
-  communication: {
-    beginner: {
-      context: "You are an AI communication coach helping a beginner practice basic communication skills. Be encouraging, patient, and provide gentle feedback.",
-      greeting: "Hi! I'm excited to help you practice your communication skills. Let's start with some basic conversation techniques!"
-    },
-    intermediate: {
-      context: "You are an AI communication coach working with someone who has some experience. Challenge them with more complex scenarios and provide detailed feedback.",
-      greeting: "Welcome! Ready to take your communication skills to the next level? Let's dive into some challenging scenarios."
-    },
-    advanced: {
-      context: "You are an AI communication coach for advanced practitioners. Focus on nuanced techniques, advanced strategies, and professional-level feedback.",
-      greeting: "Great to see you! Let's work on mastering the subtle art of advanced communication techniques."
+  generateSystemPrompt: (topic: string, difficulty: 'beginner' | 'intermediate' | 'advanced'): string => {
+    const basePrompt = `You are an AI coach helping someone practice ${topic} skills. `
+    
+    switch (difficulty) {
+      case 'beginner':
+        return basePrompt + 'Be encouraging, patient, and focus on fundamental concepts. Provide gentle feedback and simple, actionable advice.'
+      case 'intermediate':
+        return basePrompt + 'Challenge them with realistic scenarios and provide detailed feedback. Focus on practical application and skill refinement.'
+      case 'advanced':
+        return basePrompt + 'Engage in sophisticated discussions, present complex scenarios, and provide expert-level insights and feedback.'
+      default:
+        return basePrompt + 'Adapt your approach based on their responses and provide helpful, constructive feedback.'
     }
   },
-  productivity: {
-    beginner: {
-      context: "You are an AI productivity coach helping someone new to time management and productivity techniques. Focus on simple, actionable advice.",
-      greeting: "Hello! Let's explore some simple but powerful productivity techniques that can transform your daily routine."
-    },
-    intermediate: {
-      context: "You are an AI productivity coach working with someone who knows the basics. Introduce more sophisticated systems and methodologies.",
-      greeting: "Welcome back! Ready to optimize your productivity systems and tackle more advanced time management strategies?"
-    },
-    advanced: {
-      context: "You are an AI productivity coach for productivity experts. Discuss cutting-edge techniques, complex systems, and optimization strategies.",
-      greeting: "Excellent! Let's dive deep into advanced productivity optimization and explore some cutting-edge methodologies."
-    }
-  },
-  business: {
-    beginner: {
-      context: "You are an AI business coach helping someone new to business concepts. Explain fundamentals clearly and provide practical examples.",
-      greeting: "Hi there! Let's explore essential business concepts that will give you a strong foundation for success."
-    },
-    intermediate: {
-      context: "You are an AI business coach working with someone who understands the basics. Focus on strategy, growth, and more complex business scenarios.",
-      greeting: "Welcome! Ready to tackle some strategic business challenges and explore growth opportunities?"
-    },
-    advanced: {
-      context: "You are an AI business coach for experienced professionals. Discuss advanced strategies, market dynamics, and executive-level decision making.",
-      greeting: "Great to connect! Let's analyze complex business scenarios and explore advanced strategic thinking."
-    }
-  },
-  leadership: {
-    beginner: {
-      context: "You are an AI leadership coach helping someone new to leadership roles. Focus on fundamental leadership principles and basic team management.",
-      greeting: "Hello! Let's explore the core principles of effective leadership and how to start building your leadership skills."
-    },
-    intermediate: {
-      context: "You are an AI leadership coach working with someone who has some leadership experience. Focus on team dynamics, motivation, and conflict resolution.",
-      greeting: "Welcome! Ready to enhance your leadership capabilities and tackle more complex team challenges?"
-    },
-    advanced: {
-      context: "You are an AI leadership coach for senior leaders. Discuss organizational transformation, strategic leadership, and executive presence.",
-      greeting: "Excellent! Let's explore advanced leadership strategies and discuss how to drive organizational excellence."
-    }
+
+  generateCustomGreeting: (topic: string, objective: string, difficulty: 'beginner' | 'intermediate' | 'advanced'): string => {
+    const levelText = difficulty === 'beginner' ? 'get started with' : difficulty === 'intermediate' ? 'improve your' : 'master advanced'
+    return `Hi! I'm excited to help you ${levelText} ${topic} skills. I understand you want to ${objective}. Let's practice together and make this a great learning experience!`
   }
 }
 
-// Helper function to get prompt template
-export const getPromptTemplate = (category: string, difficulty: 'beginner' | 'intermediate' | 'advanced') => {
-  const categoryTemplates = promptTemplates[category as keyof typeof promptTemplates]
-  if (!categoryTemplates) {
-    // Default template for unknown categories
-    return {
-      context: `You are an AI coach helping someone practice ${category} skills at a ${difficulty} level. Be supportive and provide constructive feedback.`,
-      greeting: `Hi! I'm here to help you practice your ${category} skills. Let's get started!`
-    }
-  }
-  
-  return categoryTemplates[difficulty]
-}
-
-console.log('🚀 Tavus client initialized')
+console.log('🚀 Tavus client initialized for My Conversations')

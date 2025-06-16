@@ -9,16 +9,13 @@ const corsHeaders = {
 
 interface TavusRequest {
   replica_id: string
-  conversation_name?: string
+  conversation_name: string
   conversational_context?: string
   custom_greeting?: string
-  callback_url?: string
   properties?: {
     max_call_duration?: number
     participant_left_timeout?: number
     participant_absent_timeout?: number
-    enable_recording?: boolean
-    enable_transcription?: boolean
   }
 }
 
@@ -56,6 +53,10 @@ serve(async (req) => {
       return new Response('Missing replica_id', { status: 400, headers: corsHeaders })
     }
 
+    if (!tavusRequest.conversation_name) {
+      return new Response('Missing conversation_name', { status: 400, headers: corsHeaders })
+    }
+
     // Get Tavus API key from environment
     const tavusApiKey = Deno.env.get('TAVUS_API_KEY')
     if (!tavusApiKey) {
@@ -63,7 +64,9 @@ serve(async (req) => {
       return new Response('Service configuration error', { status: 500, headers: corsHeaders })
     }
 
-    // Call Tavus API
+    console.log('Creating Tavus conversation for user:', user.id)
+
+    // Call Tavus My Conversations API
     const tavusResponse = await fetch('https://tavusapi.com/v2/conversations', {
       method: 'POST',
       headers: {
@@ -75,7 +78,7 @@ serve(async (req) => {
 
     if (!tavusResponse.ok) {
       const errorText = await tavusResponse.text()
-      console.error('Tavus API error:', errorText)
+      console.error('Tavus API error:', tavusResponse.status, errorText)
       return new Response('Failed to create conversation', { 
         status: tavusResponse.status, 
         headers: corsHeaders 
@@ -83,6 +86,7 @@ serve(async (req) => {
     }
 
     const tavusData = await tavusResponse.json()
+    console.log('Tavus conversation created:', tavusData.conversation_id)
     
     return new Response(JSON.stringify(tavusData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

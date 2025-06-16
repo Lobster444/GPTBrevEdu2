@@ -43,13 +43,10 @@ export const chatSessionHelpers = {
         conversation_name: `${input.topic} Practice Session`,
         conversational_context: systemPrompt,
         custom_greeting: customGreeting,
-        callback_url: tavusConfig.getCallbackUrl(),
         properties: {
           max_call_duration: 300, // 5 minutes
           participant_left_timeout: 30,
-          participant_absent_timeout: 60,
-          enable_recording: true,
-          enable_transcription: true
+          participant_absent_timeout: 60
         }
       }
 
