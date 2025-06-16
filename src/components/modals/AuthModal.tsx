@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { authHelpers } from '../../lib/supabase';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 import Toast from '../ui/Toast';
 
 interface AuthModalProps {
@@ -17,6 +18,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onToggleMode,
 }) => {
+  const { isSupabaseReachable, connectionError } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -121,6 +123,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!isSupabaseReachable) {
+      showToast('Authentication service is currently unavailable. Please try again later.', 'error');
+      return;
+    }
+    
     if (!validateForm()) return;
 
     setIsLoading(true);
@@ -205,23 +212,23 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isFormDisabled = !isSupabaseReachable || isLoading;
+
   return (
     <>
-      {/* CRITICAL FIX: Modal container with z-[9998] - just below header's z-[9999] */}
-      {/* Added pointer-events-none to container, pointer-events-auto to interactive elements */}
+      {/* Modal container */}
       <div className="fixed inset-0 z-[9998] overflow-y-auto pointer-events-none">
         <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 pointer-events-none">
-          {/* Backdrop - CRITICAL FIX: Reduced backdrop-blur and added pointer-events-auto */}
+          {/* Backdrop */}
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300 animate-backdrop-fade pointer-events-auto"
             onClick={onClose}
             style={{ 
-              // Ensure backdrop doesn't interfere with header clicks
-              top: '64px' // Start below header (header height is 64px)
+              top: '64px' // Start below header
             }}
           />
 
-          {/* Modal - CRITICAL FIX: Added pointer-events-auto and proper positioning */}
+          {/* Modal */}
           <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal animate-scale-in pointer-events-auto" style={{ marginTop: '64px' }}>
             {/* Close Button */}
             <button
@@ -248,6 +255,19 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 </p>
               </div>
 
+              {/* Connection Error Warning */}
+              {!isSupabaseReachable && (
+                <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Service Unavailable</p>
+                    <p className="text-xs mt-1">
+                      {connectionError || 'Authentication service is currently unavailable. Please try again later.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {errors.general && (
                 <div className="bg-red-500/10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-6">
                   <p className="text-sm">{errors.general}</p>
@@ -267,7 +287,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        disabled={isLoading}
+                        disabled={isFormDisabled}
                         className={`w-full bg-gray-input border-2 ${
                           errors.name ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
                         } rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -291,7 +311,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      disabled={isLoading}
+                      disabled={isFormDisabled}
                       className={`w-full bg-gray-input border-2 ${
                         errors.email ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
                       } rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -314,7 +334,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      disabled={isLoading}
+                      disabled={isFormDisabled}
                       className={`w-full bg-gray-input border-2 ${
                         errors.password ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
                       } rounded-lg pl-12 pr-12 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -323,7 +343,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoading}
+                      disabled={isFormDisabled}
                       className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -346,7 +366,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        disabled={isLoading}
+                        disabled={isFormDisabled}
                         className={`w-full bg-gray-input border-2 ${
                           errors.confirmPassword ? 'border-red-500' : 'border-transparent focus:border-purple-modal'
                         } rounded-lg pl-12 pr-12 py-3 text-white placeholder-gray-placeholder focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -355,7 +375,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        disabled={isLoading}
+                        disabled={isFormDisabled}
                         className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
                       >
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -370,7 +390,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                     className="w-full bg-purple-modal hover:bg-purple-modal-hover disabled:opacity-50 disabled:cursor-not-allowed text-black py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
                   >
                     {isLoading ? (
@@ -378,6 +398,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></div>
                         {mode === 'login' ? 'Signing In...' : 'Creating Account...'}
                       </>
+                    ) : !isSupabaseReachable ? (
+                      'Service Unavailable'
                     ) : (
                       mode === 'login' ? 'Sign In' : 'Create Account'
                     )}
@@ -390,7 +412,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
                   <button
                     onClick={onToggleMode}
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                     className="text-white font-medium underline hover:text-gray-300 transition-colors disabled:opacity-50"
                   >
                     {mode === 'login' ? 'Sign up' : 'Sign in'}
@@ -402,7 +424,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 <div className="mt-4 text-center">
                   <button 
                     className="text-gray-text hover:text-gray-300 text-sm transition-colors disabled:opacity-50"
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                   >
                     Forgot your password?
                   </button>

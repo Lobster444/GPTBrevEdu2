@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { GraduationCap, User, Star, LogOut } from 'lucide-react';
+import { GraduationCap, User, Star, LogOut, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { authHelpers } from '../lib/supabase';
 
@@ -10,11 +10,13 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
   const location = useLocation();
-  const { user, profile, isAuthenticated, loading } = useAuth();
+  const { user, profile, isAuthenticated, loading, isSupabaseReachable, connectionError } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = async () => {
+    if (!isSupabaseReachable) return;
+    
     try {
       await authHelpers.signOut();
     } catch (error) {
@@ -26,8 +28,10 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
   console.log('Header Debug Info:', {
     loading,
     isAuthenticated,
+    isSupabaseReachable,
     user: user ? { id: user.id, email: user.email } : null,
-    profile: profile ? { full_name: profile.full_name, role: profile.role } : null
+    profile: profile ? { full_name: profile.full_name, role: profile.role } : null,
+    connectionError
   });
 
   return (
@@ -79,13 +83,20 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
             </Link>
           </nav>
 
-          {/* Auth Section - CRITICAL FIX: Better loading state and fallback */}
+          {/* Auth Section */}
           <div className="flex items-center space-x-3 relative z-[10] pointer-events-auto">
             {loading ? (
-              /* CRITICAL FIX: Better loading indicator with timeout fallback */
+              /* Loading indicator */
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 animate-spin border-2 border-purple-primary border-t-transparent rounded-full"></div>
                 <span className="text-xs text-gray-400 hidden sm:block">Loading...</span>
+              </div>
+            ) : !isSupabaseReachable ? (
+              /* Server Offline State */
+              <div className="flex items-center space-x-2 text-red-400">
+                <AlertCircle className="w-5 h-5" />
+                <span className="text-sm font-medium hidden sm:block">Server Offline</span>
+                <span className="text-xs sm:hidden">Offline</span>
               </div>
             ) : isAuthenticated && user ? (
               /* Authenticated User State */
@@ -100,12 +111,22 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                       PLUS
                     </span>
                   )}
+                  {connectionError && (
+                    <span className="text-xs text-yellow-400" title={connectionError}>
+                      ⚠️
+                    </span>
+                  )}
                 </div>
                 
                 {/* Sign Out Button */}
                 <button
                   onClick={handleSignOut}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto"
+                  disabled={!isSupabaseReachable}
+                  className={`text-sm font-medium transition-colors hidden sm:flex items-center space-x-1 px-3 py-2 rounded-lg pointer-events-auto ${
+                    isSupabaseReachable
+                      ? 'text-gray-300 hover:text-white hover:bg-dark-secondary'
+                      : 'text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -124,7 +145,7 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 </Link>
               </div>
             ) : (
-              /* CRITICAL FIX: Non-Authenticated User State - Always show these buttons */
+              /* Non-Authenticated User State */
               <div className="flex items-center space-x-3">
                 {/* Sign In Button */}
                 <button
@@ -132,7 +153,12 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                     console.log('Sign In button clicked');
                     onAuthClick('login');
                   }}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative bg-transparent border border-transparent hover:border-gray-600"
+                  disabled={!isSupabaseReachable}
+                  className={`text-sm font-medium transition-colors px-4 py-2 rounded-lg pointer-events-auto relative border border-transparent ${
+                    isSupabaseReachable
+                      ? 'text-gray-300 hover:text-white hover:bg-dark-secondary hover:border-gray-600'
+                      : 'text-gray-500 cursor-not-allowed bg-gray-800'
+                  }`}
                   style={{ 
                     zIndex: 10001,
                     minHeight: '36px',
@@ -150,7 +176,12 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                     console.log('Get Started button clicked');
                     onAuthClick('signup');
                   }}
-                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative"
+                  disabled={!isSupabaseReachable}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative ${
+                    isSupabaseReachable
+                      ? 'bg-purple-primary hover:bg-purple-dark text-white'
+                      : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                  }`}
                   style={{ 
                     zIndex: 10001,
                     minWidth: '100px',

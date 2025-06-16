@@ -1,97 +1,116 @@
 import { createClient } from '@supabase/supabase-js'
 
+// CRITICAL: Validate environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-console.log('Supabase Config Check:', {
+console.log('Supabase Environment Check:', {
   hasUrl: !!supabaseUrl,
   hasKey: !!supabaseAnonKey,
-  url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'Missing',
-  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'Missing'
+  url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'MISSING',
+  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'MISSING'
 })
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.')
+if (!supabaseUrl) {
+  console.error('CRITICAL: VITE_SUPABASE_URL is missing from environment variables')
+  throw new Error('VITE_SUPABASE_URL is required. Please check your .env file.')
 }
 
+if (!supabaseAnonKey) {
+  console.error('CRITICAL: VITE_SUPABASE_ANON_KEY is missing from environment variables')
+  throw new Error('VITE_SUPABASE_ANON_KEY is required. Please check your .env file.')
+}
+
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false
-  },
-  global: {
-    headers: {
-      'x-client-info': 'brevedu-web'
-    }
   }
 })
 
-// CRITICAL FIX: Improved connection test with proper error handling
-const testConnection = async () => {
+// Test connection function with timeout
+export const testConnection = async (timeoutMs = 5000): Promise<boolean> => {
   try {
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 10000)
+    console.log('Testing Supabase connection...')
+    
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timeout')), timeoutMs)
     )
     
-    const sessionPromise = supabase.auth.getSession()
+    const connectionPromise = supabase.auth.getSession()
     
-    const result = await Promise.race([sessionPromise, timeoutPromise])
+    await Promise.race([connectionPromise, timeoutPromise])
     
-    // Check if result is an error (timeout case)
-    if (result instanceof Error) {
-      console.error('Supabase connection test failed:', result.message)
-      return
-    }
-    
-    const { error } = result
-    if (error) {
-      console.error('Supabase connection test failed:', error)
-    } else {
-      console.log('Supabase connection test successful')
-    }
+    console.log('Supabase connection test: SUCCESS')
+    return true
   } catch (error) {
     console.error('Supabase connection test timeout or failed:', error)
-    // Don't throw - just log the error
+    return false
   }
 }
 
-testConnection()
-
-// Database types
+// Profile interface
 export interface Profile {
   id: string
   full_name: string
-  role: 'anonymous' | 'free' | 'premium'
+  role: 'free' | 'premium'
   avatar_url?: string
   created_at: string
   updated_at: string
 }
 
-export interface Course {
-  id: string
-  title: string
-  description: string
-  video_url: string
-  thumbnail_url?: string
-  duration: number
-  category: string
-  is_premium: boolean
-  is_featured: boolean
-  is_published: boolean
-  view_count: number
-  rating?: number
-  created_at: string
-  updated_at: string
+// Database helpers with timeout protection
+export const dbHelpers = {
+  async getProfile(userId: string, timeoutMs = 5000): Promise<{ data: Profile | null; error: any }> {
+    try {
+      console.log('Fetching profile for user:', userId)
+      
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), timeoutMs)
+      )
+      
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      const result = await Promise.race([profilePromise, timeoutPromise])
+      
+      console.log('Profile fetch result:', result.data ? 'SUCCESS' : 'NO_DATA')
+      return result
+    } catch (error) {
+      console.error('Profile fetch failed:', error)
+      return { data: null, error }
+    }
+  },
+
+  async updateProfile(userId: string, updates: Partial<Profile>): Promise<{ data: Profile | null; error: any }> {
+    try {
+      const result = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      return result
+    } catch (error) {
+      console.error('Profile update failed:', error)
+      return { data: null, error }
+    }
+  }
 }
 
-// Auth helper functions
+// Auth helpers with timeout protection
 export const authHelpers = {
-  signUp: async (email: string, password: string, fullName: string) => {
-    console.log('authHelpers.signUp: Attempting signup with:', { email, fullName });
-    
+  async signUp(email: string, password: string, fullName: string) {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      console.log('Starting signup process...')
+      
+      const result = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -101,285 +120,47 @@ export const authHelpers = {
         },
       })
       
-      if (error) {
-        console.error('authHelpers.signUp: Supabase signup error:', error);
-        return { data: null, error };
-      }
-
-      console.log('authHelpers.signUp: Signup response:', data);
-      return { data, error: null };
+      console.log('Signup result:', result.data.user ? 'SUCCESS' : 'FAILED')
+      return result
     } catch (error) {
-      console.error('authHelpers.signUp: Unexpected error:', error);
-      return { data: null, error };
+      console.error('Signup failed:', error)
+      throw error
     }
   },
 
-  signIn: async (email: string, password: string) => {
-    console.log('authHelpers.signIn: Attempting login with:', { email });
-    
+  async signIn(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log('Starting signin process...')
+      
+      const result = await supabase.auth.signInWithPassword({
         email,
         password,
       })
       
-      if (error) {
-        console.error('authHelpers.signIn: Supabase login error:', error);
-        return { data: null, error };
-      }
-
-      console.log('authHelpers.signIn: Login response:', data);
-      return { data, error: null };
+      console.log('Signin result:', result.data.user ? 'SUCCESS' : 'FAILED')
+      return result
     } catch (error) {
-      console.error('authHelpers.signIn: Unexpected error:', error);
-      return { data: null, error };
+      console.error('Signin failed:', error)
+      throw error
     }
   },
 
-  signOut: async () => {
-    console.log('authHelpers.signOut: Signing out...');
+  async signOut() {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('authHelpers.signOut: Supabase logout error:', error);
-      } else {
-        console.log('authHelpers.signOut: Successfully signed out');
-      }
-      return { error }
+      console.log('Starting signout process...')
+      
+      const result = await supabase.auth.signOut()
+      
+      console.log('Signout result: SUCCESS')
+      return result
     } catch (error) {
-      console.error('authHelpers.signOut: Unexpected error:', error);
-      return { error }
+      console.error('Signout failed:', error)
+      throw error
     }
-  },
-
-  getCurrentUser: async () => {
-    try {
-      const { data, error } = await supabase.auth.getUser()
-      if (error) {
-        console.error('authHelpers.getCurrentUser: Get current user error:', error);
-      }
-      return { data, error }
-    } catch (error) {
-      console.error('authHelpers.getCurrentUser: Unexpected error:', error);
-      return { data: null, error }
-    }
-  },
-
-  getCurrentSession: async () => {
-    try {
-      const { data, error } = await supabase.auth.getSession()
-      if (error) {
-        console.error('authHelpers.getCurrentSession: Get current session error:', error);
-      }
-      return { data, error }
-    } catch (error) {
-      console.error('authHelpers.getCurrentSession: Unexpected error:', error);
-      return { data: null, error }
-    }
-  },
-
-  onAuthStateChange: (callback: (event: string, session: any) => void) => {
-    return supabase.auth.onAuthStateChange(callback)
-  },
+  }
 }
 
-// Database helper functions
-export const dbHelpers = {
-  // Profile functions
-  getProfile: async (userId: string) => {
-    console.log('dbHelpers.getProfile: Getting profile for user:', userId);
-    
-    try {
-      // CRITICAL FIX: Proper timeout handling with Promise.race
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000)
-      )
-      
-      const profilePromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-      
-      const result = await Promise.race([profilePromise, timeoutPromise])
-      
-      // Check if result is an error (timeout case)
-      if (result instanceof Error) {
-        console.error('dbHelpers.getProfile: Profile fetch timeout');
-        return { data: null, error: result }
-      }
-      
-      const { data, error } = result
-      
-      if (error) {
-        console.error('dbHelpers.getProfile: Error getting profile:', error);
-      } else {
-        console.log('dbHelpers.getProfile: Profile retrieved:', data);
-      }
-      
-      return { data, error }
-    } catch (error) {
-      console.error('dbHelpers.getProfile: Unexpected error:', error);
-      return { data: null, error }
-    }
-  },
-
-  updateProfile: async (userId: string, updates: Partial<Profile>) => {
-    console.log('dbHelpers.updateProfile: Updating profile for user:', userId, updates);
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('dbHelpers.updateProfile: Error updating profile:', error);
-      } else {
-        console.log('dbHelpers.updateProfile: Profile updated:', data);
-      }
-      
-      return { data, error }
-    } catch (error) {
-      console.error('dbHelpers.updateProfile: Unexpected error:', error);
-      return { data: null, error }
-    }
-  },
-
-  // Course functions
-  getCourses: async (filters?: { category?: string; isPremium?: boolean; isPublished?: boolean }) => {
-    let query = supabase.from('courses').select('*')
-    
-    if (filters?.category) {
-      query = query.eq('category', filters.category)
-    }
-    if (filters?.isPremium !== undefined) {
-      query = query.eq('is_premium', filters.isPremium)
-    }
-    if (filters?.isPublished !== undefined) {
-      query = query.eq('is_published', filters.isPublished)
-    }
-    
-    query = query.order('created_at', { ascending: false })
-    
-    const { data, error } = await query
-    return { data, error }
-  },
-
-  getFeaturedCourses: async () => {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('is_featured', true)
-      .eq('is_published', true)
-      .order('created_at', { ascending: false })
-    
-    return { data, error }
-  },
-
-  getCourse: async (courseId: string) => {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('id', courseId)
-      .single()
-    
-    return { data, error }
-  },
-
-  // User progress functions
-  getUserProgress: async (userId: string, courseId?: string) => {
-    let query = supabase
-      .from('user_course_progress')
-      .select('*, courses(*)')
-      .eq('user_id', userId)
-    
-    if (courseId) {
-      query = query.eq('course_id', courseId)
-    }
-    
-    const { data, error } = await query
-    return { data, error }
-  },
-
-  updateProgress: async (userId: string, courseId: string, progress: {
-    watch_time_seconds?: number
-    completion_percentage?: number
-    completed?: boolean
-  }) => {
-    const { data, error } = await supabase
-      .from('user_course_progress')
-      .upsert({
-        user_id: userId,
-        course_id: courseId,
-        ...progress,
-        last_watched_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
-    
-    return { data, error }
-  },
-
-  // AI Chat functions
-  createChatSession: async (userId: string, courseId: string | null, topic: string, userObjective?: string, difficultyLevel?: string) => {
-    const { data, error } = await supabase
-      .from('ai_chat_sessions')
-      .insert({
-        user_id: userId,
-        course_id: courseId,
-        topic,
-        user_objective: userObjective,
-        difficulty_level: difficultyLevel || 'beginner',
-        status: 'active',
-      })
-      .select()
-      .single()
-    
-    return { data, error }
-  },
-
-  getUserChatSessions: async (userId: string) => {
-    const { data, error } = await supabase
-      .from('ai_chat_sessions')
-      .select('*, courses(*)')
-      .eq('user_id', userId)
-      .order('started_at', { ascending: false })
-    
-    return { data, error }
-  },
-
-  updateChatSession: async (sessionId: string, updates: {
-    status?: 'active' | 'completed' | 'failed' | 'cancelled'
-    ended_at?: string
-    duration_seconds?: number
-    result_url?: string
-  }) => {
-    const { data, error } = await supabase
-      .from('ai_chat_sessions')
-      .update(updates)
-      .eq('id', sessionId)
-      .select()
-      .single()
-    
-    return { data, error }
-  },
-
-  // Check daily chat limit
-  checkDailyChatLimit: async (userId: string) => {
-    const today = new Date().toISOString().split('T')[0]
-    
-    const { data, error } = await supabase
-      .from('ai_chat_sessions')
-      .select('id')
-      .eq('user_id', userId)
-      .gte('started_at', `${today}T00:00:00.000Z`)
-      .lt('started_at', `${today}T23:59:59.999Z`)
-    
-    if (error) return { count: 0, error }
-    
-    return { count: data?.length || 0, error: null }
-  },
-}
+// Initialize connection test
+testConnection().catch(error => {
+  console.error('Initial Supabase connection test failed:', error)
+})

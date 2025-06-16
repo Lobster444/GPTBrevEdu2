@@ -145,7 +145,7 @@ const CourseModal: React.FC<CourseModalProps> = ({
   onClose,
   onAuthRequired,
 }) => {
-  const { user, profile, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated, isSupabaseReachable, connectionError } = useAuth();
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
 
@@ -175,6 +175,11 @@ const CourseModal: React.FC<CourseModalProps> = ({
   const handleChatClick = () => {
     console.log('CourseModal: Chat button clicked');
     
+    if (!isSupabaseReachable) {
+      console.log('CourseModal: Supabase not reachable');
+      return;
+    }
+    
     if (!isAuthenticated) {
       console.log('CourseModal: User not authenticated, showing signup');
       onAuthRequired('signup');
@@ -203,6 +208,8 @@ const CourseModal: React.FC<CourseModalProps> = ({
   };
 
   if (!isOpen || !course) return null;
+
+  const isChatDisabled = !isSupabaseReachable || (isAuthenticated && userChatData.chatSessionsToday >= userChatData.chatLimit);
 
   return (
     <div className="fixed inset-0 z-[9997] overflow-y-auto">
@@ -323,7 +330,12 @@ const CourseModal: React.FC<CourseModalProps> = ({
                         Have a personalized conversation about {course.title.toLowerCase()} with our AI to reinforce your learning
                       </p>
                       <div className="text-sm text-gray-300">
-                        {!isAuthenticated ? (
+                        {!isSupabaseReachable ? (
+                          <span className="flex items-center space-x-2">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>AI chat is temporarily unavailable due to server connection issues</span>
+                          </span>
+                        ) : !isAuthenticated ? (
                           <span>Sign up to start your first AI chat session</span>
                         ) : userChatData.chatSessionsToday >= userChatData.chatLimit ? (
                           <span>Daily limit reached. {profile?.role !== 'premium' ? 'Upgrade to BrevEdu Plus for more sessions.' : 'Come back tomorrow for more sessions.'}</span>
@@ -331,19 +343,25 @@ const CourseModal: React.FC<CourseModalProps> = ({
                           <span>{userChatData.chatLimit - userChatData.chatSessionsToday} chat session{userChatData.chatLimit - userChatData.chatSessionsToday !== 1 ? 's' : ''} remaining today</span>
                         )}
                       </div>
+                      {connectionError && (
+                        <div className="text-xs text-yellow-200 mt-1">
+                          {connectionError}
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={handleChatClick}
                       className={`ml-4 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 ${
-                        isAuthenticated && userChatData.chatSessionsToday >= userChatData.chatLimit
+                        isChatDisabled
                           ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                           : 'bg-white text-purple-primary hover:bg-gray-100'
                       }`}
-                      disabled={isAuthenticated && userChatData.chatSessionsToday >= userChatData.chatLimit}
+                      disabled={isChatDisabled}
                     >
                       <MessageCircle className="w-5 h-5" />
                       <span>
-                        {!isAuthenticated ? 'Start Chat' : 
+                        {!isSupabaseReachable ? 'Unavailable' :
+                         !isAuthenticated ? 'Start Chat' : 
                          userChatData.chatSessionsToday >= userChatData.chatLimit ? 'Limit Reached' : 'Start Chat'}
                       </span>
                     </button>
