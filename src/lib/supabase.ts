@@ -29,11 +29,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// CRITICAL FIX: Test connection with increased timeout from 5000ms to 15000ms
+// CRITICAL FIX: Test connection with increased timeout from 15000ms to 30000ms
 const testConnection = async () => {
   try {
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Connection timeout')), 15000)
+      setTimeout(() => reject(new Error('Connection timeout')), 30000)
     )
     
     const sessionPromise = supabase.auth.getSession()
