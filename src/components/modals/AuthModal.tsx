@@ -162,19 +162,29 @@ const AuthModal: React.FC<AuthModalProps> = ({
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      const errorMessage = getSupabaseErrorMessage(error);
       
       // Check if it's a "user already exists" error during signup
       const isUserExistsError = error.message?.toLowerCase().includes('user already registered') || 
-                               error.message?.toLowerCase().includes('user_already_exists');
+                               error.message?.toLowerCase().includes('user_already_exists') ||
+                               (error.code && error.code === 'user_already_exists');
       
       if (mode === 'signup' && isUserExistsError) {
-        setErrors({ 
-          general: errorMessage,
-          userExists: 'true' // Flag to show the switch to login button
-        });
-        showToast(errorMessage, 'error');
+        // Clear password fields for security
+        setFormData(prev => ({
+          ...prev,
+          password: '',
+          confirmPassword: ''
+        }));
+        
+        // Show informative toast message
+        showToast('An account with this email already exists. Switching to sign-in mode.', 'info');
+        
+        // Automatically switch to login mode
+        setTimeout(() => {
+          onToggleMode();
+        }, 1000);
       } else {
+        const errorMessage = getSupabaseErrorMessage(error);
         setErrors({ general: errorMessage });
         showToast(errorMessage, 'error');
       }
@@ -223,14 +233,6 @@ const AuthModal: React.FC<AuthModalProps> = ({
               {errors.general && (
                 <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4">
                   <p>{errors.general}</p>
-                  {errors.userExists && mode === 'signup' && (
-                    <button
-                      onClick={onToggleMode}
-                      className="mt-2 text-purple-primary hover:text-purple-light font-medium underline transition-colors"
-                    >
-                      Switch to Sign In
-                    </button>
-                  )}
                 </div>
               )}
 
