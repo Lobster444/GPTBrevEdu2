@@ -207,9 +207,10 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <>
+      {/* Modal container with lower z-index than header (z-50 vs header's z-[60]) */}
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
+          {/* Backdrop - positioned below header */}
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-md transition-all duration-300 animate-backdrop-fade"
             onClick={onClose}
