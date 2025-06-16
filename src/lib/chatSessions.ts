@@ -1,11 +1,12 @@
 import { supabase } from './supabase'
 import { ChatSession, ChatSessionInput } from '../types/tavus'
-import { tavusApi, promptTemplates } from './tavus'
+import { tavusEdgeApi } from './tavusEdge'
+import { promptTemplates, tavusConfig } from './tavus'
 
 export const chatSessionHelpers = {
   async createChatSession(userId: string, input: ChatSessionInput): Promise<ChatSession> {
     try {
-      console.log('Creating chat session for user:', userId, 'with input:', input)
+      console.log('🔄 Creating chat session for user:', userId, 'with input:', input)
 
       // Create the session record in Supabase first
       const { data: session, error: sessionError } = await supabase
@@ -22,11 +23,11 @@ export const chatSessionHelpers = {
         .single()
 
       if (sessionError) {
-        console.error('Error creating session record:', sessionError)
-        throw sessionError
+        console.error('❌ Error creating session record:', sessionError)
+        throw new Error('Failed to create session record. Please try again.')
       }
 
-      console.log('Session record created:', session)
+      console.log('✅ Session record created:', session)
 
       // Generate prompts for Tavus
       const systemPrompt = promptTemplates.generateSystemPrompt(input.topic, input.difficultyLevel)
@@ -36,14 +37,13 @@ export const chatSessionHelpers = {
         input.difficultyLevel
       )
 
-      // Create Tavus conversation
-      // Note: In production, this should use a real replica_id from your Tavus account
+      // Create Tavus conversation via Edge Function (secure)
       const tavusRequest = {
-        replica_id: 'demo_replica_id', // Replace with actual replica ID
+        replica_id: tavusConfig.getReplicaId(),
         conversation_name: `${input.topic} Practice Session`,
         conversational_context: systemPrompt,
         custom_greeting: customGreeting,
-        callback_url: `${window.location.origin}/api/tavus-webhook`, // For session end handling
+        callback_url: tavusConfig.getCallbackUrl(),
         properties: {
           max_call_duration: 300, // 5 minutes
           participant_left_timeout: 30,
@@ -54,7 +54,7 @@ export const chatSessionHelpers = {
       }
 
       try {
-        const tavusResponse = await tavusApi.createConversation(tavusRequest)
+        const tavusResponse = await tavusEdgeApi.createConversation(tavusRequest)
         
         // Update session with Tavus details
         const { data: updatedSession, error: updateError } = await supabase
@@ -68,14 +68,14 @@ export const chatSessionHelpers = {
           .single()
 
         if (updateError) {
-          console.error('Error updating session with Tavus details:', updateError)
-          throw updateError
+          console.error('❌ Error updating session with Tavus details:', updateError)
+          throw new Error('Failed to update session with conversation details.')
         }
 
-        console.log('Chat session created successfully:', updatedSession)
+        console.log('✅ Chat session created successfully:', updatedSession)
         return updatedSession
-      } catch (tavusError) {
-        console.error('Error creating Tavus conversation:', tavusError)
+      } catch (tavusError: any) {
+        console.error('❌ Error creating Tavus conversation:', tavusError)
         
         // Update session status to failed
         await supabase
@@ -83,17 +83,20 @@ export const chatSessionHelpers = {
           .update({ status: 'failed' })
           .eq('id', session.id)
         
-        throw new Error('Failed to create AI conversation. Please try again.')
+        throw tavusError
       }
-    } catch (error) {
-      console.error('Error in createChatSession:', error)
+    } catch (error: any) {
+      console.error('❌ Error in createChatSession:', error)
       throw error
     }
   },
 
   async endChatSession(sessionId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      console.log('🔄 Ending chat session:', sessionId)
+
+      // Update session in database
+      const { error: updateError } = await supabase
         .from('ai_chat_sessions')
         .update({
           status: 'completed',
@@ -102,14 +105,14 @@ export const chatSessionHelpers = {
         })
         .eq('id', sessionId)
 
-      if (error) {
-        console.error('Error ending chat session:', error)
-        throw error
+      if (updateError) {
+        console.error('❌ Error updating session end status:', updateError)
+        throw updateError
       }
 
-      console.log('Chat session ended:', sessionId)
-    } catch (error) {
-      console.error('Error in endChatSession:', error)
+      console.log('✅ Chat session ended:', sessionId)
+    } catch (error: any) {
+      console.error('❌ Error in endChatSession:', error)
       throw error
     }
   },
@@ -124,13 +127,13 @@ export const chatSessionHelpers = {
         .limit(limit)
 
       if (error) {
-        console.error('Error fetching user chat sessions:', error)
+        console.error('❌ Error fetching user chat sessions:', error)
         throw error
       }
 
       return sessions || []
-    } catch (error) {
-      console.error('Error in getUserChatSessions:', error)
+    } catch (error: any) {
+      console.error('❌ Error in getUserChatSessions:', error)
       throw error
     }
   },
@@ -150,13 +153,13 @@ export const chatSessionHelpers = {
         .lt('started_at', tomorrow.toISOString())
 
       if (error) {
-        console.error('Error fetching today\'s chat count:', error)
+        console.error('❌ Error fetching today\'s chat count:', error)
         return 0
       }
 
       return sessions?.length || 0
-    } catch (error) {
-      console.error('Error in getTodaysChatCount:', error)
+    } catch (error: any) {
+      console.error('❌ Error in getTodaysChatCount:', error)
       return 0
     }
   }
