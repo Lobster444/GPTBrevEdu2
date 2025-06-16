@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, Play, MessageCircle, Clock, User, Star, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { X, Play, MessageCircle, Clock, User, Star, AlertCircle, Crown } from 'lucide-react';
+import { useUserAccess } from '../../hooks/useUserAccess';
 
 interface CourseModalProps {
   isOpen: boolean;
@@ -145,24 +145,19 @@ const CourseModal: React.FC<CourseModalProps> = ({
   onClose,
   onAuthRequired,
 }) => {
-  const { user, profile, isAuthenticated, isSupabaseReachable, connectionError } = useAuth();
+  const { role, isAuthenticated, canAccessPremiumContent, chatData } = useUserAccess();
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
 
   // Debug logging
   console.log('CourseModal: Rendering with props:', { isOpen, courseId });
   console.log('CourseModal: Modal should be visible:', isOpen);
+  console.log('CourseModal: User access data:', { role, isAuthenticated, canAccessPremiumContent, chatData });
 
   // Get course data
   const course = courseId ? mockCourses[courseId as keyof typeof mockCourses] : null;
 
   console.log('CourseModal: Course data:', course);
-
-  // Mock user chat session data - in a real app, this would come from the database
-  const userChatData = {
-    chatSessionsToday: 0,
-    chatLimit: isAuthenticated ? (profile?.role === 'premium' ? 3 : 1) : 0,
-  };
 
   useEffect(() => {
     console.log('CourseModal: useEffect triggered, isOpen:', isOpen);
@@ -185,20 +180,15 @@ const CourseModal: React.FC<CourseModalProps> = ({
   const handleChatClick = () => {
     console.log('CourseModal: Chat button clicked');
     
-    if (!isSupabaseReachable) {
-      console.log('CourseModal: Supabase not reachable');
-      return;
-    }
-    
-    if (!isAuthenticated) {
-      console.log('CourseModal: User not authenticated, showing signup');
+    if (role === 'anonymous') {
+      console.log('CourseModal: Anonymous user, showing signup');
       onAuthRequired('signup');
       return;
     }
 
-    if (userChatData.chatSessionsToday >= userChatData.chatLimit) {
+    if (!chatData.canStartChat) {
       console.log('CourseModal: Chat limit reached');
-      // In a real app, this would show an upgrade modal or message
+      // Show upgrade modal or message
       return;
     }
 
@@ -236,7 +226,41 @@ const CourseModal: React.FC<CourseModalProps> = ({
 
   console.log('CourseModal: Rendering modal for course:', course.title);
 
-  const isChatDisabled = !isSupabaseReachable || (isAuthenticated && userChatData.chatSessionsToday >= userChatData.chatLimit);
+  // Check if user can access this specific course
+  const canAccessCourse = !course.isPremium || canAccessPremiumContent;
+
+  // Determine chat button state and message
+  const getChatButtonState = () => {
+    if (role === 'anonymous') {
+      return {
+        text: 'Sign Up to Practice with AI',
+        disabled: false,
+        message: 'Create a free account to start AI chat sessions',
+        action: () => onAuthRequired('signup')
+      };
+    }
+
+    if (!chatData.canStartChat) {
+      const isUpgradeNeeded = role === 'free' && chatData.chatSessionsToday >= chatData.chatLimit;
+      return {
+        text: isUpgradeNeeded ? 'Upgrade for More Chats' : 'Daily Limit Reached',
+        disabled: true,
+        message: isUpgradeNeeded 
+          ? `You've used your ${chatData.chatLimit} free chat${chatData.chatLimit > 1 ? 's' : ''} for today. Upgrade to BrevEdu Plus for more sessions.`
+          : `You've reached your daily limit of ${chatData.chatLimit} chat${chatData.chatLimit > 1 ? 's' : ''}. Resets in ${chatData.timeUntilReset}`,
+        action: isUpgradeNeeded ? () => window.location.href = '/brevedu-plus' : undefined
+      };
+    }
+
+    return {
+      text: 'Practice with AI',
+      disabled: false,
+      message: `${chatData.chatLimit - chatData.chatSessionsToday} chat session${chatData.chatLimit - chatData.chatSessionsToday !== 1 ? 's' : ''} remaining today`,
+      action: handleChatClick
+    };
+  };
+
+  const chatButtonState = getChatButtonState();
 
   return (
     <div 
@@ -281,43 +305,80 @@ const CourseModal: React.FC<CourseModalProps> = ({
                 </div>
               </div>
 
+              {/* Premium Content Gate */}
+              {course.isPremium && !canAccessCourse && (
+                <div className="bg-gradient-to-r from-yellow-primary/10 to-orange-500/10 border border-yellow-primary/20 rounded-xl p-6 mb-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Crown className="w-6 h-6 text-yellow-primary" />
+                    <h3 className="text-lg font-semibold text-white">Premium Content</h3>
+                  </div>
+                  <p className="text-gray-300 mb-4">
+                    This course is part of BrevEdu Plus. Upgrade to access premium content and get more AI chat sessions.
+                  </p>
+                  <button
+                    onClick={() => window.location.href = '/brevedu-plus'}
+                    className="bg-yellow-primary hover:bg-yellow-dark text-black px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Upgrade to BrevEdu Plus
+                  </button>
+                </div>
+              )}
+
               {/* Video Section */}
               <div className="mb-6">
                 <div className="relative bg-black rounded-xl overflow-hidden mb-4">
                   <div className="aspect-video">
-                    {isVideoLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-dark-tertiary">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-primary"></div>
-                      </div>
-                    )}
-                    
-                    {videoError ? (
+                    {!canAccessCourse ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
-                        <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">Video Unavailable</h3>
+                        <Crown className="w-16 h-16 text-yellow-primary mb-4" />
+                        <h3 className="text-lg font-semibold text-white mb-2">Premium Content</h3>
                         <p className="text-gray-400 mb-4">
-                          Sorry, this video is currently unavailable. Please try again later.
+                          Upgrade to BrevEdu Plus to watch this course
                         </p>
                         <button
-                          onClick={() => {
-                            setVideoError(false);
-                            setIsVideoLoading(true);
-                          }}
-                          className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg transition-colors"
+                          onClick={() => window.location.href = '/brevedu-plus'}
+                          className="bg-yellow-primary hover:bg-yellow-dark text-black px-4 py-2 rounded-lg transition-colors"
                         >
-                          Retry
+                          Upgrade Now
                         </button>
                       </div>
                     ) : (
-                      <iframe
-                        src={`https://www.youtube-nocookie.com/embed/${course.videoId}?modestbranding=1&rel=0`}
-                        title={course.title}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        onLoad={handleVideoLoad}
-                        onError={handleVideoError}
-                      />
+                      <>
+                        {isVideoLoading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-dark-tertiary">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-primary"></div>
+                          </div>
+                        )}
+                        
+                        {videoError ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
+                            <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-semibold text-white mb-2">Video Unavailable</h3>
+                            <p className="text-gray-400 mb-4">
+                              Sorry, this video is currently unavailable. Please try again later.
+                            </p>
+                            <button
+                              onClick={() => {
+                                setVideoError(false);
+                                setIsVideoLoading(true);
+                              }}
+                              className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : (
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${course.videoId}?modestbranding=1&rel=0`}
+                            title={course.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            onLoad={handleVideoLoad}
+                            onError={handleVideoError}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -363,40 +424,20 @@ const CourseModal: React.FC<CourseModalProps> = ({
                         Have a personalized conversation about {course.title.toLowerCase()} with our AI to reinforce your learning
                       </p>
                       <div className="text-sm text-gray-300">
-                        {!isSupabaseReachable ? (
-                          <span className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4" />
-                            <span>AI chat is temporarily unavailable due to server connection issues</span>
-                          </span>
-                        ) : !isAuthenticated ? (
-                          <span>Sign up to start your first AI chat session</span>
-                        ) : userChatData.chatSessionsToday >= userChatData.chatLimit ? (
-                          <span>Daily limit reached. {profile?.role !== 'premium' ? 'Upgrade to BrevEdu Plus for more sessions.' : 'Come back tomorrow for more sessions.'}</span>
-                        ) : (
-                          <span>{userChatData.chatLimit - userChatData.chatSessionsToday} chat session{userChatData.chatLimit - userChatData.chatSessionsToday !== 1 ? 's' : ''} remaining today</span>
-                        )}
+                        <span>{chatButtonState.message}</span>
                       </div>
-                      {connectionError && (
-                        <div className="text-xs text-yellow-200 mt-1">
-                          {connectionError}
-                        </div>
-                      )}
                     </div>
                     <button
-                      onClick={handleChatClick}
+                      onClick={chatButtonState.action}
                       className={`ml-4 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 ${
-                        isChatDisabled
+                        chatButtonState.disabled
                           ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                           : 'bg-white text-purple-primary hover:bg-gray-100'
                       }`}
-                      disabled={isChatDisabled}
+                      disabled={chatButtonState.disabled}
                     >
                       <MessageCircle className="w-5 h-5" />
-                      <span>
-                        {!isSupabaseReachable ? 'Unavailable' :
-                         !isAuthenticated ? 'Start Chat' : 
-                         userChatData.chatSessionsToday >= userChatData.chatLimit ? 'Limit Reached' : 'Start Chat'}
-                      </span>
+                      <span>{chatButtonState.text}</span>
                     </button>
                   </div>
                 </div>
