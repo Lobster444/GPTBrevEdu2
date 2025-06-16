@@ -83,6 +83,7 @@ The application will be available at `http://localhost:5173`
 - **Icons**: Lucide React
 - **Routing**: React Router DOM
 - **Build Tool**: Vite
+- **Network Resilience**: fetch-retry for robust API calls
 
 ## 📁 Project Structure
 
@@ -90,7 +91,7 @@ The application will be available at `http://localhost:5173`
 src/
 ├── components/          # Reusable UI components
 │   ├── modals/         # Modal components (Auth, Course)
-│   └── ui/             # Base UI components (Toast, etc.)
+│   └── ui/             # Base UI components (Toast, ConnectionBanner)
 ├── hooks/              # Custom React hooks
 ├── lib/                # Utilities and configurations
 ├── pages/              # Page components
@@ -114,66 +115,87 @@ The app uses Supabase Auth with email/password authentication:
 
 ## 🚨 Troubleshooting
 
-⚠️ **If you see "VITE_SUPABASE_URL is required" error:**
+### Supabase Connection Issues
 
-1. **Copy `.env.example` to `.env`**:
-   ```bash
-   cp .env.example .env
-   ```
+If you see connection timeouts, "Server Offline" banners, or authentication failures:
 
-2. **Fill in values from Supabase Dashboard**:
-   - Go to [Supabase Dashboard](https://supabase.com/dashboard)
-   - Navigate to Project Settings → API
-   - Copy your Project URL and anon/public key
-   - Paste them into your `.env` file
+#### 1. Environment Variables
+⚠️ **Most common issue**: Missing or incorrect `.env` configuration
 
-3. **Restart development server**:
-   ```bash
-   npm run dev
-   ```
+```bash
+# Copy the example file
+cp .env.example .env
 
-### Connection Issues
+# Edit .env with your actual Supabase credentials
+# Get them from: https://supabase.com/dashboard/project/your-project/settings/api
+```
 
-If you see "Server Offline" or connection timeouts:
+**Required format:**
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
 
-1. **Check your `.env` file** - Ensure valid Supabase credentials
-2. **Verify Supabase project status** - Check if your project is active
-3. **Restart dev server** - After updating environment variables
-4. **Check project limits** - Free tier has usage limits
-5. **Use the Retry button** - Click the retry button in the connection warning banner
+#### 2. Restart Development Server
+After updating `.env`:
+```bash
+npm run dev
+```
 
-### Testing Connection
+#### 3. Check Supabase Project Status
+- Visit [Supabase Dashboard](https://supabase.com/dashboard)
+- Ensure your project is active and not paused
+- Check if you've hit usage limits (free tier restrictions)
 
-To test your Supabase connection:
-
-1. **Ensure `.env` exists and VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are correctly set**
-2. **Restart dev server**: `npm run dev`
-3. **Check browser console** for connection logs
-4. **Troubleshoot**: network firewalls, VPN issues, etc.
-
-You can also test connectivity using the Supabase CLI:
+#### 4. Test Connectivity
+Use the Supabase CLI to test your connection:
 ```bash
 # Install Supabase CLI
 npm install -g supabase
 
-# Test connection (replace with your project URL)
+# Test connection (replace with your actual values)
 curl -H "apikey: YOUR_ANON_KEY" "YOUR_SUPABASE_URL/rest/v1/"
 ```
 
+#### 5. Network Issues
+- **VPN/Firewall**: Try disabling VPN or checking firewall settings
+- **Corporate Network**: Some corporate networks block external API calls
+- **DNS Issues**: Try using a different DNS server (8.8.8.8, 1.1.1.1)
+
+#### 6. Browser Issues
+- Clear browser cache and cookies
+- Try incognito/private browsing mode
+- Check browser console for additional error details
+
+### Connection Banner
+The app shows a connection banner when Supabase is unreachable:
+- **"Server offline"**: Check your `.env` file and network connection
+- **"Profile data temporarily unavailable"**: Authentication works but profile loading failed
+- **Click "Retry"**: Attempts to reconnect automatically
+
 ### Database Issues
 
-If authentication or data loading fails:
+If authentication works but data loading fails:
 
 1. **Run migrations** - Ensure all database tables exist
 2. **Check RLS policies** - Verify Row Level Security is properly configured
-3. **Test connection** - Use Supabase dashboard to test queries
+3. **Test queries** - Use Supabase dashboard to test queries manually
 
-### Common Fixes
+### Common Error Messages
 
-- **"Environment variables missing"**: Copy `.env.example` to `.env` and add your credentials
-- **"Profile not found"**: Check if the profiles table exists and has proper triggers
-- **"Infinite loading"**: Usually indicates Supabase connection issues
-- **"VITE_SUPABASE_URL is required"**: Follow the troubleshooting steps above
+- **"VITE_SUPABASE_URL is required"**: Follow environment setup steps above
+- **"Profile not found"**: Check if profiles table exists and has proper triggers
+- **"Connection timeout after 5000ms"**: Network or server connectivity issue
+- **"Invalid API key"**: Check your anon key in `.env` file
+- **"Project not found"**: Verify your Supabase URL is correct
+
+### Performance Optimization
+
+The app includes several performance enhancements:
+- **Automatic retries**: Network requests retry up to 3 times with exponential backoff
+- **Connection pooling**: Reuses connections for better performance
+- **Timeout handling**: Prevents hanging requests with 5-second timeouts
+- **Graceful degradation**: App remains functional even with partial connectivity issues
 
 ## 📚 Additional Documentation
 

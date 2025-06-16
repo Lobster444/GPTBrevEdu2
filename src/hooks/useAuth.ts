@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase, dbHelpers, Profile, testConnection, isSupabaseConfigured, retryConnection } from '../lib/supabase'
+import { supabase, dbHelpers, Profile, testConnection, isSupabaseConfigured, retryConnection, isSupabaseOnline } from '../lib/supabase'
 
 interface AuthState {
   user: User | null
@@ -20,7 +20,7 @@ export const useAuth = () => {
     profile: null,
     loading: true,
     isAuthenticated: false,
-    isSupabaseReachable: true,
+    isSupabaseReachable: isSupabaseOnline,
     connectionError: null,
     retryConnection: async () => {}
   })
@@ -33,6 +33,7 @@ export const useAuth = () => {
       const isConnected = await retryConnection()
       
       if (isConnected) {
+        console.log('✅ Connection restored, reinitializing session...')
         // If connection is restored, try to get the session again
         await getInitialSession()
       } else {
@@ -54,130 +55,14 @@ export const useAuth = () => {
     }
   }
 
-  useEffect(() => {
-    // Get initial session with comprehensive error handling
-    const getInitialSession = async () => {
-      try {
-        console.log('useAuth: Getting initial session...')
-        
-        // Check if Supabase is configured first
-        if (!isSupabaseConfigured) {
-          console.error('useAuth: Supabase is not configured')
-          setAuthState(prev => ({
-            ...prev,
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            isAuthenticated: false,
-            isSupabaseReachable: false,
-            connectionError: 'Supabase is not configured. Please check your .env file and restart the server.',
-            retryConnection: handleRetryConnection
-          }))
-          return
-        }
-        
-        // Test if Supabase is reachable
-        const isReachable = await testConnection(10000)
-        
-        if (!isReachable) {
-          console.error('useAuth: Supabase is not reachable')
-          setAuthState(prev => ({
-            ...prev,
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            isAuthenticated: false,
-            isSupabaseReachable: false,
-            connectionError: 'Unable to connect to our servers. Please check your internet connection.',
-            retryConnection: handleRetryConnection
-          }))
-          return
-        }
-        
-        // Get session with timeout
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 15000)
-        )
-        
-        const sessionPromise = supabase.auth.getSession()
-        
-        const result = await Promise.race([sessionPromise, timeoutPromise])
-        
-        const { data: { session }, error } = result
-        
-        if (error) {
-          console.error('useAuth: Error getting session:', error)
-          setAuthState(prev => ({
-            ...prev,
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            isAuthenticated: false,
-            isSupabaseReachable: false,
-            connectionError: 'Authentication service is currently unavailable.',
-            retryConnection: handleRetryConnection
-          }))
-          return
-        }
-
-        console.log('useAuth: Initial session:', session ? 'Found' : 'None')
-
-        if (session?.user) {
-          console.log('useAuth: User found, getting profile...')
-          
-          // Get profile with retry logic
-          let profile = null
-          let profileError = null
-          
-          try {
-            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 20000)
-            if (fetchError) {
-              console.error('useAuth: Error getting profile:', fetchError)
-              profileError = fetchError
-            } else {
-              console.log('useAuth: Profile loaded:', profileData ? 'SUCCESS' : 'NO_PROFILE')
-              profile = profileData
-            }
-          } catch (error) {
-            console.error('useAuth: Profile fetch failed:', error)
-            profileError = error
-          }
-
-          // Set auth state regardless of profile success/failure
-          setAuthState(prev => ({
-            ...prev,
-            user: session.user,
-            session,
-            profile,
-            loading: false,
-            isAuthenticated: true,
-            isSupabaseReachable: true,
-            connectionError: profileError ? 'Profile data temporarily unavailable' : null,
-            retryConnection: handleRetryConnection
-          }))
-        } else {
-          console.log('useAuth: No user session found')
-          setAuthState(prev => ({
-            ...prev,
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            isAuthenticated: false,
-            isSupabaseReachable: true,
-            connectionError: null,
-            retryConnection: handleRetryConnection
-          }))
-        }
-      } catch (error: any) {
-        console.error('useAuth: Error in getInitialSession:', error)
-        
-        // Always set loading to false on any error
-        const isTimeoutError = error.message?.includes('timeout')
-        
+  // Get initial session with comprehensive error handling
+  const getInitialSession = async () => {
+    try {
+      console.log('useAuth: Getting initial session...')
+      
+      // Check if Supabase is configured first
+      if (!isSupabaseConfigured) {
+        console.error('useAuth: Supabase is not configured')
         setAuthState(prev => ({
           ...prev,
           user: null,
@@ -185,21 +70,132 @@ export const useAuth = () => {
           profile: null,
           loading: false,
           isAuthenticated: false,
-          isSupabaseReachable: !isTimeoutError,
-          connectionError: isTimeoutError 
-            ? 'Connection timeout. Please check your internet connection and try again.'
-            : 'An unexpected error occurred. Please refresh the page.',
+          isSupabaseReachable: false,
+          connectionError: 'Supabase is not configured. Please check your .env file and restart the server.',
+          retryConnection: handleRetryConnection
+        }))
+        return
+      }
+      
+      // Test if Supabase is reachable with shorter timeout for initial check
+      const isReachable = await testConnection(5000)
+      
+      if (!isReachable) {
+        console.error('useAuth: Supabase is not reachable')
+        setAuthState(prev => ({
+          ...prev,
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          isAuthenticated: false,
+          isSupabaseReachable: false,
+          connectionError: 'Unable to connect to our servers. Please check your internet connection.',
+          retryConnection: handleRetryConnection
+        }))
+        return
+      }
+      
+      // Get session with proper error handling
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('useAuth: Error getting session:', error)
+        setAuthState(prev => ({
+          ...prev,
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          isAuthenticated: false,
+          isSupabaseReachable: false,
+          connectionError: 'Authentication service is currently unavailable.',
+          retryConnection: handleRetryConnection
+        }))
+        return
+      }
+
+      console.log('useAuth: Initial session:', session ? 'Found' : 'None')
+
+      if (session?.user) {
+        console.log('useAuth: User found, getting profile...')
+        
+        // Get profile with enhanced error handling
+        let profile = null
+        let profileError = null
+        
+        try {
+          const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 8000)
+          if (fetchError) {
+            console.error('useAuth: Error getting profile:', fetchError)
+            profileError = fetchError
+          } else {
+            console.log('useAuth: Profile loaded:', profileData ? 'SUCCESS' : 'NO_PROFILE')
+            profile = profileData
+          }
+        } catch (error) {
+          console.error('useAuth: Profile fetch failed:', error)
+          profileError = error
+        }
+
+        // Set auth state - allow authentication even if profile fails
+        setAuthState(prev => ({
+          ...prev,
+          user: session.user,
+          session,
+          profile,
+          loading: false,
+          isAuthenticated: true,
+          isSupabaseReachable: true,
+          connectionError: profileError ? 'Profile data temporarily unavailable' : null,
+          retryConnection: handleRetryConnection
+        }))
+      } else {
+        console.log('useAuth: No user session found')
+        setAuthState(prev => ({
+          ...prev,
+          user: null,
+          session: null,
+          profile: null,
+          loading: false,
+          isAuthenticated: false,
+          isSupabaseReachable: true,
+          connectionError: null,
           retryConnection: handleRetryConnection
         }))
       }
+    } catch (error: any) {
+      console.error('useAuth: Error in getInitialSession:', error)
+      
+      // Determine error type for better user messaging
+      const isTimeoutError = error.message?.includes('timeout')
+      const isNetworkError = error.message?.includes('fetch') || error.message?.includes('network')
+      
+      let errorMessage = 'An unexpected error occurred. Please refresh the page.'
+      if (isTimeoutError) {
+        errorMessage = 'Connection timeout. Please check your internet connection and try again.'
+      } else if (isNetworkError) {
+        errorMessage = 'Network error. Please check your internet connection.'
+      }
+      
+      setAuthState(prev => ({
+        ...prev,
+        user: null,
+        session: null,
+        profile: null,
+        loading: false,
+        isAuthenticated: false,
+        isSupabaseReachable: false,
+        connectionError: errorMessage,
+        retryConnection: handleRetryConnection
+      }))
     }
+  }
 
-    // Store the function reference so it can be called from retry
-    window.getInitialSession = getInitialSession
-    
+  useEffect(() => {
     getInitialSession()
 
-    // Listen for auth changes with error handling
+    // Listen for auth changes with enhanced error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('useAuth: Auth state changed:', event, session?.user?.id)
@@ -208,10 +204,10 @@ export const useAuth = () => {
           if (session?.user) {
             console.log('useAuth: User signed in, getting profile...')
             
-            // Don't block auth state update on profile fetch
+            // Get profile with timeout and error handling
             let profile = null
             try {
-              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 20000)
+              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 8000)
               if (profileError) {
                 console.error('useAuth: Error getting profile after auth change:', profileError)
               } else {
@@ -222,7 +218,7 @@ export const useAuth = () => {
               console.error('useAuth: Profile fetch failed after auth change:', profileError)
             }
 
-            // Always update auth state, with or without profile
+            // Update auth state - allow authentication even if profile fails
             setAuthState(prev => ({
               ...prev,
               user: session.user,
@@ -251,11 +247,16 @@ export const useAuth = () => {
         } catch (error: any) {
           console.error('useAuth: Error in auth state change handler:', error)
           
-          // Don't update auth state on error, keep current state
+          // Don't completely break auth state on profile errors
+          const hasValidSession = session?.user
+          
           setAuthState(prev => ({
             ...prev,
+            user: hasValidSession ? session.user : prev.user,
+            session: hasValidSession ? session : prev.session,
             loading: false,
-            connectionError: 'Authentication service temporarily unavailable',
+            isAuthenticated: hasValidSession || prev.isAuthenticated,
+            connectionError: 'Profile service temporarily unavailable',
             retryConnection: handleRetryConnection
           }))
         }
@@ -265,7 +266,6 @@ export const useAuth = () => {
     return () => {
       console.log('useAuth: Cleaning up subscription')
       subscription.unsubscribe()
-      delete window.getInitialSession
     }
   }, [])
 
@@ -273,7 +273,7 @@ export const useAuth = () => {
     if (authState.user && authState.isSupabaseReachable) {
       console.log('useAuth: Refreshing profile...')
       try {
-        const { data: profile, error } = await dbHelpers.getProfile(authState.user.id)
+        const { data: profile, error } = await dbHelpers.getProfile(authState.user.id, 8000)
         if (!error) {
           console.log('useAuth: Profile refreshed:', profile ? 'SUCCESS' : 'NO_PROFILE')
           setAuthState(prev => ({ ...prev, profile, connectionError: null }))
@@ -288,14 +288,14 @@ export const useAuth = () => {
     }
   }
 
-  // DEBUG: Log current auth state
-  console.log('useAuth: Current state:', {
+  // DEBUG: Log current auth state (less verbose)
+  console.log('useAuth: State:', {
     loading: authState.loading,
     isAuthenticated: authState.isAuthenticated,
     isSupabaseReachable: authState.isSupabaseReachable,
     hasUser: !!authState.user,
     hasProfile: !!authState.profile,
-    connectionError: authState.connectionError
+    hasError: !!authState.connectionError
   })
 
   return {
