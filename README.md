@@ -140,6 +140,25 @@ If you see "Server Offline" or connection timeouts:
 2. **Verify Supabase project status** - Check if your project is active
 3. **Restart dev server** - After updating environment variables
 4. **Check project limits** - Free tier has usage limits
+5. **Use the Retry button** - Click the retry button in the connection warning banner
+
+### Testing Connection
+
+To test your Supabase connection:
+
+1. **Ensure `.env` exists and VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are correctly set**
+2. **Restart dev server**: `npm run dev`
+3. **Check browser console** for connection logs
+4. **Troubleshoot**: network firewalls, VPN issues, etc.
+
+You can also test connectivity using the Supabase CLI:
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Test connection (replace with your project URL)
+curl -H "apikey: YOUR_ANON_KEY" "YOUR_SUPABASE_URL/rest/v1/"
+```
 
 ### Database Issues
 

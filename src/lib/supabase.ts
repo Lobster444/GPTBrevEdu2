@@ -28,8 +28,10 @@ if (!isSupabaseConfigured) {
   console.error('❌ CRITICAL: Supabase environment variables are missing or not configured')
   console.error('📝 Please update your .env file with your actual Supabase credentials')
   console.error('🔗 Get them from: https://supabase.com/dashboard/project/your-project/settings/api')
-  console.warn('💡 You can create .env from .env.example and set your Supabase keys.')
-  console.warn('🔄 After updating .env, restart the development server with: npm run dev')
+  console.warn('💡 Steps to fix:')
+  console.warn('   1. Copy .env.example to .env: cp .env.example .env')
+  console.warn('   2. Edit .env with your Supabase URL and anon key')
+  console.warn('   3. Restart the development server: npm run dev')
   
   // Use dummy values to prevent crashes - the app will show "Server Offline" instead
   finalSupabaseUrl = 'https://dummy.supabase.co'
@@ -51,8 +53,74 @@ export const supabase = createClient(finalSupabaseUrl, finalSupabaseAnonKey, {
   }
 })
 
-// Test connection function with improved timeout handling
-export const testConnection = async (timeoutMs = 10000): Promise<boolean> => {
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 5000,  // 5 seconds
+  backoffMultiplier: 2
+}
+
+// Utility function for exponential backoff
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Enhanced retry wrapper with exponential backoff
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  timeoutMs = 10000
+): Promise<T> {
+  let lastError: Error | null = null
+  
+  for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      console.log(`🔄 ${operationName} (attempt ${attempt}/${RETRY_CONFIG.maxRetries})`)
+      
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`${operationName} timeout after ${timeoutMs}ms`)), timeoutMs)
+      )
+      
+      // Race the operation against timeout
+      const result = await Promise.race([operation(), timeoutPromise])
+      
+      console.log(`✅ ${operationName} succeeded on attempt ${attempt}`)
+      return result
+    } catch (error: any) {
+      lastError = error
+      console.warn(`⚠️ ${operationName} failed on attempt ${attempt}:`, error.message)
+      
+      // Don't retry on certain errors
+      if (error.message?.includes('Invalid API key') || 
+          error.message?.includes('Project not found') ||
+          error.message?.includes('401') ||
+          error.message?.includes('403')) {
+        console.error(`❌ ${operationName} failed with non-retryable error:`, error.message)
+        throw error
+      }
+      
+      // If this was the last attempt, throw the error
+      if (attempt === RETRY_CONFIG.maxRetries) {
+        console.error(`❌ ${operationName} failed after ${RETRY_CONFIG.maxRetries} attempts`)
+        throw error
+      }
+      
+      // Calculate delay with exponential backoff
+      const delayMs = Math.min(
+        RETRY_CONFIG.baseDelay * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt - 1),
+        RETRY_CONFIG.maxDelay
+      )
+      
+      console.log(`⏳ Retrying ${operationName} in ${delayMs}ms...`)
+      await delay(delayMs)
+    }
+  }
+  
+  throw lastError || new Error(`${operationName} failed after all retries`)
+}
+
+// Test connection function with retry logic
+export const testConnection = async (timeoutMs = 8000): Promise<boolean> => {
   // Immediately return false if Supabase is not configured
   if (!isSupabaseConfigured) {
     console.warn('⚠️ Supabase connection test skipped: Environment variables not configured')
@@ -60,21 +128,23 @@ export const testConnection = async (timeoutMs = 10000): Promise<boolean> => {
   }
 
   try {
-    console.log('🔄 Testing Supabase connection...')
-    
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Connection timeout')), timeoutMs)
+    await withRetry(
+      async () => {
+        // Use a simple query to test the connection
+        const { error } = await supabase.from('profiles').select('id').limit(1)
+        if (error && !error.message.includes('RLS')) {
+          throw error
+        }
+        return true
+      },
+      'Supabase connection test',
+      timeoutMs
     )
-    
-    // Use a simple auth check instead of getSession for faster response
-    const connectionPromise = supabase.auth.getUser()
-    
-    await Promise.race([connectionPromise, timeoutPromise])
     
     console.log('✅ Supabase connection test: SUCCESS')
     return true
-  } catch (error) {
-    console.error('❌ Supabase connection test failed:', error)
+  } catch (error: any) {
+    console.error('❌ Supabase connection test failed after retries:', error.message)
     return false
   }
 }
@@ -87,36 +157,36 @@ export interface Profile {
   avatar_url?: string
   created_at: string
   updated_at: string
+  email?: string
 }
 
-// Database helpers with improved timeout protection
+// Database helpers with retry logic
 export const dbHelpers = {
-  async getProfile(userId: string, timeoutMs = 10000): Promise<{ data: Profile | null; error: any }> {
+  async getProfile(userId: string, timeoutMs = 15000): Promise<{ data: Profile | null; error: any }> {
     if (!isSupabaseConfigured) {
       return { data: null, error: new Error('Supabase not configured') }
     }
 
     try {
-      console.log('🔄 Fetching profile for user:', userId)
-      
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), timeoutMs)
+      const result = await withRetry(
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle()
+          
+          if (error) throw error
+          return { data, error: null }
+        },
+        `Profile fetch for user ${userId}`,
+        timeoutMs
       )
-      
-      // CRITICAL FIX: Use maybeSingle() instead of single() to handle cases where no profile exists
-      // This prevents PGRST116 errors when a profile legitimately doesn't exist
-      const profilePromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-      
-      const result = await Promise.race([profilePromise, timeoutPromise])
       
       console.log('✅ Profile fetch result:', result.data ? 'SUCCESS' : 'NO_PROFILE_FOUND')
       return result
-    } catch (error) {
-      console.error('❌ Profile fetch failed:', error)
+    } catch (error: any) {
+      console.error('❌ Profile fetch failed after retries:', error.message)
       return { data: null, error }
     }
   },
@@ -127,25 +197,32 @@ export const dbHelpers = {
     }
 
     try {
-      console.log('🔄 Updating profile for user:', userId)
-      
-      const result = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .maybeSingle()
+      const result = await withRetry(
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId)
+            .select()
+            .maybeSingle()
+          
+          if (error) throw error
+          return { data, error: null }
+        },
+        `Profile update for user ${userId}`,
+        10000
+      )
       
       console.log('✅ Profile update result:', result.data ? 'SUCCESS' : 'FAILED')
       return result
-    } catch (error) {
-      console.error('❌ Profile update failed:', error)
+    } catch (error: any) {
+      console.error('❌ Profile update failed after retries:', error.message)
       return { data: null, error }
     }
   }
 }
 
-// Auth helpers with improved error handling
+// Auth helpers with retry logic
 export const authHelpers = {
   async signUp(email: string, password: string, fullName: string) {
     if (!isSupabaseConfigured) {
@@ -153,22 +230,29 @@ export const authHelpers = {
     }
 
     try {
-      console.log('🔄 Starting signup process...')
-      
-      const result = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
+      const result = await withRetry(
+        async () => {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName,
+              },
+            },
+          })
+          
+          if (error) throw error
+          return { data, error: null }
         },
-      })
+        'User signup',
+        15000
+      )
       
       console.log('✅ Signup result:', result.data.user ? 'SUCCESS' : 'FAILED')
       return result
-    } catch (error) {
-      console.error('❌ Signup failed:', error)
+    } catch (error: any) {
+      console.error('❌ Signup failed after retries:', error.message)
       throw error
     }
   },
@@ -179,17 +263,24 @@ export const authHelpers = {
     }
 
     try {
-      console.log('🔄 Starting signin process...')
-      
-      const result = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      const result = await withRetry(
+        async () => {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
+          
+          if (error) throw error
+          return { data, error: null }
+        },
+        'User signin',
+        15000
+      )
       
       console.log('✅ Signin result:', result.data.user ? 'SUCCESS' : 'FAILED')
       return result
-    } catch (error) {
-      console.error('❌ Signin failed:', error)
+    } catch (error: any) {
+      console.error('❌ Signin failed after retries:', error.message)
       throw error
     }
   },
@@ -200,17 +291,29 @@ export const authHelpers = {
     }
 
     try {
-      console.log('🔄 Starting signout process...')
-      
-      const result = await supabase.auth.signOut()
+      const result = await withRetry(
+        async () => {
+          const { error } = await supabase.auth.signOut()
+          if (error) throw error
+          return { error: null }
+        },
+        'User signout',
+        10000
+      )
       
       console.log('✅ Signout result: SUCCESS')
       return result
-    } catch (error) {
-      console.error('❌ Signout failed:', error)
+    } catch (error: any) {
+      console.error('❌ Signout failed after retries:', error.message)
       throw error
     }
   }
+}
+
+// Connection retry helper for UI components
+export const retryConnection = async (): Promise<boolean> => {
+  console.log('🔄 Manual connection retry requested...')
+  return await testConnection()
 }
 
 // Initialize connection test on module load
