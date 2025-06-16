@@ -79,12 +79,12 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
             </Link>
           </nav>
 
-          {/* Auth Section - Enhanced debugging and visibility */}
+          {/* Auth Section - CRITICAL FIX: Better loading state and fallback */}
           <div className="flex items-center space-x-3 relative z-[10] pointer-events-auto">
-            {/* DEBUG: Show loading state more clearly */}
             {loading ? (
+              /* CRITICAL FIX: Better loading indicator with timeout fallback */
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 animate-pulse bg-dark-secondary rounded-full border-2 border-purple-primary"></div>
+                <div className="w-8 h-8 animate-spin border-2 border-purple-primary border-t-transparent rounded-full"></div>
                 <span className="text-xs text-gray-400 hidden sm:block">Loading...</span>
               </div>
             ) : isAuthenticated && user ? (
@@ -124,16 +124,21 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 </Link>
               </div>
             ) : (
-              /* Non-Authenticated User State - CRITICAL FIX */
+              /* CRITICAL FIX: Non-Authenticated User State - Always show these buttons */
               <div className="flex items-center space-x-3">
                 {/* Sign In Button */}
                 <button
-                  onClick={() => onAuthClick('login')}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative"
+                  onClick={() => {
+                    console.log('Sign In button clicked');
+                    onAuthClick('login');
+                  }}
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative bg-transparent border border-transparent hover:border-gray-600"
                   style={{ 
                     zIndex: 10001,
-                    backgroundColor: 'transparent',
-                    border: '1px solid transparent'
+                    minHeight: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   Sign In
@@ -141,12 +146,18 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 
                 {/* Get Started Button */}
                 <button
-                  onClick={() => onAuthClick('signup')}
+                  onClick={() => {
+                    console.log('Get Started button clicked');
+                    onAuthClick('signup');
+                  }}
                   className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative"
                   style={{ 
                     zIndex: 10001,
                     minWidth: '100px',
-                    minHeight: '36px'
+                    minHeight: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   Get Started

@@ -24,10 +24,21 @@ export const useAuth = () => {
     const getInitialSession = async () => {
       try {
         console.log('useAuth: Getting initial session...')
-        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        // CRITICAL FIX: Add timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 10000)
+        )
+        
+        const { data: { session }, error } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any
         
         if (error) {
           console.error('useAuth: Error getting session:', error)
+          // CRITICAL FIX: Always set loading to false on error
           setAuthState({
             user: null,
             session: null,
@@ -42,23 +53,39 @@ export const useAuth = () => {
 
         if (session?.user) {
           console.log('useAuth: User found, getting profile...')
-          // Get user profile
-          const { data: profile, error: profileError } = await dbHelpers.getProfile(session.user.id)
-          if (profileError) {
-            console.error('useAuth: Error getting profile:', profileError)
-          } else {
-            console.log('useAuth: Profile loaded:', profile)
-          }
+          
+          // CRITICAL FIX: Don't let profile fetch block the auth state
+          try {
+            const { data: profile, error: profileError } = await dbHelpers.getProfile(session.user.id)
+            if (profileError) {
+              console.error('useAuth: Error getting profile:', profileError)
+              // Continue without profile - don't block authentication
+            } else {
+              console.log('useAuth: Profile loaded:', profile)
+            }
 
-          setAuthState({
-            user: session.user,
-            session,
-            profile: profile || null,
-            loading: false,
-            isAuthenticated: true,
-          })
+            // CRITICAL FIX: Set auth state regardless of profile success/failure
+            setAuthState({
+              user: session.user,
+              session,
+              profile: profile || null,
+              loading: false,
+              isAuthenticated: true,
+            })
+          } catch (profileError) {
+            console.error('useAuth: Profile fetch failed:', profileError)
+            // Still set user as authenticated even if profile fails
+            setAuthState({
+              user: session.user,
+              session,
+              profile: null,
+              loading: false,
+              isAuthenticated: true,
+            })
+          }
         } else {
           console.log('useAuth: No user session found')
+          // CRITICAL FIX: Always set loading to false
           setAuthState({
             user: null,
             session: null,
@@ -69,6 +96,7 @@ export const useAuth = () => {
         }
       } catch (error) {
         console.error('useAuth: Error in getInitialSession:', error)
+        // CRITICAL FIX: Always set loading to false on any error
         setAuthState({
           user: null,
           session: null,
@@ -88,23 +116,32 @@ export const useAuth = () => {
         
         if (session?.user) {
           console.log('useAuth: User signed in, getting profile...')
-          // Get user profile when user signs in
-          const { data: profile, error: profileError } = await dbHelpers.getProfile(session.user.id)
-          if (profileError) {
-            console.error('useAuth: Error getting profile after auth change:', profileError)
-          } else {
-            console.log('useAuth: Profile loaded after auth change:', profile)
+          
+          // CRITICAL FIX: Don't block auth state update on profile fetch
+          let profile = null
+          try {
+            const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id)
+            if (profileError) {
+              console.error('useAuth: Error getting profile after auth change:', profileError)
+            } else {
+              console.log('useAuth: Profile loaded after auth change:', profileData)
+              profile = profileData
+            }
+          } catch (profileError) {
+            console.error('useAuth: Profile fetch failed after auth change:', profileError)
           }
 
+          // CRITICAL FIX: Always update auth state, with or without profile
           setAuthState({
             user: session.user,
             session,
-            profile: profile || null,
+            profile,
             loading: false,
             isAuthenticated: true,
           })
         } else {
           console.log('useAuth: User signed out')
+          // CRITICAL FIX: Always set loading to false
           setAuthState({
             user: null,
             session: null,
@@ -125,12 +162,16 @@ export const useAuth = () => {
   const refreshProfile = async () => {
     if (authState.user) {
       console.log('useAuth: Refreshing profile...')
-      const { data: profile, error } = await dbHelpers.getProfile(authState.user.id)
-      if (!error && profile) {
-        console.log('useAuth: Profile refreshed:', profile)
-        setAuthState(prev => ({ ...prev, profile }))
-      } else {
-        console.error('useAuth: Error refreshing profile:', error)
+      try {
+        const { data: profile, error } = await dbHelpers.getProfile(authState.user.id)
+        if (!error && profile) {
+          console.log('useAuth: Profile refreshed:', profile)
+          setAuthState(prev => ({ ...prev, profile }))
+        } else {
+          console.error('useAuth: Error refreshing profile:', error)
+        }
+      } catch (error) {
+        console.error('useAuth: Profile refresh failed:', error)
       }
     }
   }

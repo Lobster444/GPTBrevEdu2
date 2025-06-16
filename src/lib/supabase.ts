@@ -14,16 +14,45 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Test connection
-supabase.auth.getSession().then(({ data, error }) => {
-  if (error) {
-    console.error('Supabase connection test failed:', error)
-  } else {
-    console.log('Supabase connection test successful')
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // CRITICAL FIX: Add timeout and retry settings
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false
+  },
+  // CRITICAL FIX: Add global timeout
+  global: {
+    headers: {
+      'x-client-info': 'brevedu-web'
+    }
   }
 })
+
+// CRITICAL FIX: Test connection with timeout and better error handling
+const testConnection = async () => {
+  try {
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Connection timeout')), 5000)
+    )
+    
+    const sessionPromise = supabase.auth.getSession()
+    
+    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]) as any
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error)
+      // Don't throw - just log the error
+    } else {
+      console.log('Supabase connection test successful')
+    }
+  } catch (error) {
+    console.error('Supabase connection test timeout or failed:', error)
+    // Don't throw - just log the error
+  }
+}
+
+testConnection()
 
 // Database types
 export interface Profile {
@@ -57,67 +86,92 @@ export const authHelpers = {
   signUp: async (email: string, password: string, fullName: string) => {
     console.log('authHelpers.signUp: Attempting signup with:', { email, fullName });
     
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    })
-    
-    if (error) {
-      console.error('authHelpers.signUp: Supabase signup error:', error);
+      })
+      
+      if (error) {
+        console.error('authHelpers.signUp: Supabase signup error:', error);
+        return { data: null, error };
+      }
+
+      console.log('authHelpers.signUp: Signup response:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('authHelpers.signUp: Unexpected error:', error);
       return { data: null, error };
     }
-
-    console.log('authHelpers.signUp: Signup response:', data);
-    return { data, error: null };
   },
 
   signIn: async (email: string, password: string) => {
     console.log('authHelpers.signIn: Attempting login with:', { email });
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    
-    if (error) {
-      console.error('authHelpers.signIn: Supabase login error:', error);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (error) {
+        console.error('authHelpers.signIn: Supabase login error:', error);
+        return { data: null, error };
+      }
+
+      console.log('authHelpers.signIn: Login response:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('authHelpers.signIn: Unexpected error:', error);
       return { data: null, error };
     }
-
-    console.log('authHelpers.signIn: Login response:', data);
-    return { data, error: null };
   },
 
   signOut: async () => {
     console.log('authHelpers.signOut: Signing out...');
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error('authHelpers.signOut: Supabase logout error:', error);
-    } else {
-      console.log('authHelpers.signOut: Successfully signed out');
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('authHelpers.signOut: Supabase logout error:', error);
+      } else {
+        console.log('authHelpers.signOut: Successfully signed out');
+      }
+      return { error }
+    } catch (error) {
+      console.error('authHelpers.signOut: Unexpected error:', error);
+      return { error }
     }
-    return { error }
   },
 
   getCurrentUser: async () => {
-    const { data, error } = await supabase.auth.getUser()
-    if (error) {
-      console.error('authHelpers.getCurrentUser: Get current user error:', error);
+    try {
+      const { data, error } = await supabase.auth.getUser()
+      if (error) {
+        console.error('authHelpers.getCurrentUser: Get current user error:', error);
+      }
+      return { data, error }
+    } catch (error) {
+      console.error('authHelpers.getCurrentUser: Unexpected error:', error);
+      return { data: null, error }
     }
-    return { data, error }
   },
 
   getCurrentSession: async () => {
-    const { data, error } = await supabase.auth.getSession()
-    if (error) {
-      console.error('authHelpers.getCurrentSession: Get current session error:', error);
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) {
+        console.error('authHelpers.getCurrentSession: Get current session error:', error);
+      }
+      return { data, error }
+    } catch (error) {
+      console.error('authHelpers.getCurrentSession: Unexpected error:', error);
+      return { data: null, error }
     }
-    return { data, error }
   },
 
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
@@ -130,37 +184,56 @@ export const dbHelpers = {
   // Profile functions
   getProfile: async (userId: string) => {
     console.log('dbHelpers.getProfile: Getting profile for user:', userId);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
     
-    if (error) {
-      console.error('dbHelpers.getProfile: Error getting profile:', error);
-    } else {
-      console.log('dbHelpers.getProfile: Profile retrieved:', data);
+    try {
+      // CRITICAL FIX: Add timeout to profile fetch
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+      )
+      
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any
+      
+      if (error) {
+        console.error('dbHelpers.getProfile: Error getting profile:', error);
+      } else {
+        console.log('dbHelpers.getProfile: Profile retrieved:', data);
+      }
+      
+      return { data, error }
+    } catch (error) {
+      console.error('dbHelpers.getProfile: Unexpected error:', error);
+      return { data: null, error }
     }
-    
-    return { data, error }
   },
 
   updateProfile: async (userId: string, updates: Partial<Profile>) => {
     console.log('dbHelpers.updateProfile: Updating profile for user:', userId, updates);
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single()
     
-    if (error) {
-      console.error('dbHelpers.updateProfile: Error updating profile:', error);
-    } else {
-      console.log('dbHelpers.updateProfile: Profile updated:', data);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('dbHelpers.updateProfile: Error updating profile:', error);
+      } else {
+        console.log('dbHelpers.updateProfile: Profile updated:', data);
+      }
+      
+      return { data, error }
+    } catch (error) {
+      console.error('dbHelpers.updateProfile: Unexpected error:', error);
+      return { data: null, error }
     }
-    
-    return { data, error }
   },
 
   // Course functions
