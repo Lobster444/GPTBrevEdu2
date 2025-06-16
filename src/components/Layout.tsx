@@ -30,6 +30,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setCourseModal({ isOpen: true, courseId });
   };
 
+  // Function to open auth modal - will be passed to child components
+  const openAuthModal = (mode: 'login' | 'signup') => {
+    console.log('Layout: Opening auth modal in mode:', mode);
+    setAuthModal({ isOpen: true, mode });
+  };
+
   // Show connection warning if Supabase is unreachable and loading is complete
   const showConnectionWarning = !loading && !isSupabaseReachable && !dismissedConnectionWarning;
 
@@ -62,10 +68,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Header onAuthClick={(mode) => setAuthModal({ isOpen: true, mode })} />
       
       <main className="flex-1 pb-20 md:pb-0">
-        {/* Pass openCourseModal function to children via React.cloneElement */}
+        {/* Pass both openCourseModal and openAuthModal functions to children */}
         {React.Children.map(children, child => {
           if (React.isValidElement(child)) {
-            return React.cloneElement(child, { onCourseClick: openCourseModal } as any);
+            return React.cloneElement(child, { 
+              onCourseClick: openCourseModal,
+              onAuthClick: openAuthModal 
+            } as any);
           }
           return child;
         })}

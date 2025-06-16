@@ -3,7 +3,11 @@ import { User, Settings, Crown, MessageCircle, BookOpen, TrendingUp, LogOut, Ale
 import { useAuth } from '../hooks/useAuth';
 import { authHelpers } from '../lib/supabase';
 
-const Profile: React.FC = () => {
+interface ProfileProps {
+  onAuthClick?: (mode: 'login' | 'signup') => void;
+}
+
+const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
   const { user, profile, isAuthenticated, loading, isSupabaseReachable, connectionError } = useAuth();
 
   const handleSignOut = async () => {
@@ -13,6 +17,12 @@ const Profile: React.FC = () => {
       await authHelpers.signOut();
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+
+  const handleAuthClick = (mode: 'login' | 'signup') => {
+    if (onAuthClick) {
+      onAuthClick(mode);
     }
   };
 
@@ -94,16 +104,30 @@ const Profile: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <button 
-                  className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                    isSupabaseReachable
-                      ? 'bg-purple-primary hover:bg-purple-dark text-white'
-                      : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                  }`}
-                  disabled={!isSupabaseReachable}
-                >
-                  Sign In
-                </button>
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={() => handleAuthClick('login')}
+                    className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                      isSupabaseReachable
+                        ? 'bg-purple-primary hover:bg-purple-dark text-white'
+                        : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                    }`}
+                    disabled={!isSupabaseReachable}
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    onClick={() => handleAuthClick('signup')}
+                    className={`px-6 py-2 font-medium transition-colors ${
+                      isSupabaseReachable
+                        ? 'text-gray-300 hover:text-white'
+                        : 'text-gray-500 cursor-not-allowed'
+                    }`}
+                    disabled={!isSupabaseReachable}
+                  >
+                    Create Account
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -122,6 +146,7 @@ const Profile: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-3">
             <button 
+              onClick={() => handleAuthClick('login')}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 isSupabaseReachable
                   ? 'bg-purple-primary hover:bg-purple-dark text-white'
@@ -132,6 +157,7 @@ const Profile: React.FC = () => {
               Sign In
             </button>
             <button 
+              onClick={() => handleAuthClick('signup')}
               className={`px-6 py-3 font-medium transition-colors ${
                 isSupabaseReachable
                   ? 'text-gray-300 hover:text-white'
