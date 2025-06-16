@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase, dbHelpers, Profile, testConnection } from '../lib/supabase'
+import { supabase, dbHelpers, Profile, testConnection, isSupabaseConfigured } from '../lib/supabase'
 
 interface AuthState {
   user: User | null
@@ -29,8 +29,23 @@ export const useAuth = () => {
       try {
         console.log('useAuth: Getting initial session...')
         
-        // First test if Supabase is reachable
-        const isReachable = await testConnection(60000)
+        // Check if Supabase is configured first
+        if (!isSupabaseConfigured) {
+          console.error('useAuth: Supabase is not configured')
+          setAuthState({
+            user: null,
+            session: null,
+            profile: null,
+            loading: false,
+            isAuthenticated: false,
+            isSupabaseReachable: false,
+            connectionError: 'Supabase is not configured. Please check your .env file and restart the server.',
+          })
+          return
+        }
+        
+        // Test if Supabase is reachable with shorter timeout
+        const isReachable = await testConnection(10000)
         
         if (!isReachable) {
           console.error('useAuth: Supabase is not reachable')
@@ -48,7 +63,7 @@ export const useAuth = () => {
         
         // CRITICAL FIX: Proper timeout handling with Promise.race
         const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 60000)
+          setTimeout(() => reject(new Error('Session timeout')), 10000)
         )
         
         const sessionPromise = supabase.auth.getSession()
@@ -81,7 +96,7 @@ export const useAuth = () => {
           let profileError = null
           
           try {
-            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 60000)
+            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 10000)
             if (fetchError) {
               console.error('useAuth: Error getting profile:', fetchError)
               profileError = fetchError
@@ -150,8 +165,8 @@ export const useAuth = () => {
             // CRITICAL FIX: Don't block auth state update on profile fetch
             let profile = null
             try {
-              // TIMEOUT FIX: Increase timeout from 30000ms to 60000ms for auth state changes
-              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 60000)
+              // TIMEOUT FIX: Use shorter timeout for auth state changes
+              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 10000)
               if (profileError) {
                 console.error('useAuth: Error getting profile after auth change:', profileError)
               } else {

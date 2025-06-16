@@ -53,7 +53,7 @@ export const supabase = createClient(finalSupabaseUrl, finalSupabaseAnonKey, {
 })
 
 // Test connection function with improved timeout handling
-export const testConnection = async (timeoutMs = 60000): Promise<boolean> => {
+export const testConnection = async (timeoutMs = 10000): Promise<boolean> => {
   // Immediately return false if Supabase is not configured
   if (!isSupabaseConfigured) {
     console.warn('⚠️ Supabase connection test skipped: Environment variables not configured')
@@ -92,7 +92,7 @@ export interface Profile {
 
 // Database helpers with improved timeout protection
 export const dbHelpers = {
-  async getProfile(userId: string, timeoutMs = 60000): Promise<{ data: Profile | null; error: any }> {
+  async getProfile(userId: string, timeoutMs = 10000): Promise<{ data: Profile | null; error: any }> {
     if (!isSupabaseConfigured) {
       return { data: null, error: new Error('Supabase not configured') }
     }
