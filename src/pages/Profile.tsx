@@ -1,6 +1,8 @@
 import React from 'react';
-import { User, Settings, Crown, MessageCircle, BookOpen, TrendingUp, LogOut, AlertCircle } from 'lucide-react';
+import { User, Settings, Crown, MessageCircle, BookOpen, TrendingUp, LogOut, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useUserAccess } from '../hooks/useUserAccess';
+import { useChatSessions } from '../hooks/useChatSessions';
 import { authHelpers } from '../lib/supabase';
 
 interface ProfileProps {
@@ -9,6 +11,8 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
   const { user, profile, isAuthenticated, loading, isSupabaseReachable, connectionError } = useAuth();
+  const { role, chatData } = useUserAccess();
+  const { sessions, loading: sessionsLoading } = useChatSessions();
 
   const handleSignOut = async () => {
     if (!isSupabaseReachable) return;
@@ -26,12 +30,12 @@ const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
     }
   };
 
-  // Mock stats - will be replaced with real data
+  // Calculate stats from actual data
   const stats = {
-    coursesCompleted: isSupabaseReachable ? 0 : '-',
-    totalWatchTime: isSupabaseReachable ? '0 min' : '-',
-    chatSessions: isSupabaseReachable ? 0 : '-',
-    streak: isSupabaseReachable ? 0 : '-',
+    coursesCompleted: isSupabaseReachable ? 0 : '-', // TODO: Implement course completion tracking
+    totalWatchTime: isSupabaseReachable ? '0 min' : '-', // TODO: Implement watch time tracking
+    chatSessions: isSupabaseReachable ? sessions.length : '-',
+    streak: isSupabaseReachable ? 0 : '-', // TODO: Implement streak tracking
   };
 
   if (loading) {
@@ -89,6 +93,11 @@ const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
                   }`}>
                     {profile?.role === 'premium' && <Crown className="w-4 h-4 mr-1" />}
                     {profile?.role === 'premium' ? 'BrevEdu Plus' : 'Free Plan'}
+                  </span>
+                  {/* Chat Usage Indicator */}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-primary/20 text-purple-primary">
+                    <MessageCircle className="w-4 h-4 mr-1" />
+                    {chatData.chatSessionsToday}/{chatData.chatLimit} chats today
                   </span>
                   <button
                     onClick={handleSignOut}
@@ -203,6 +212,44 @@ const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
         </div>
       </div>
 
+      {/* Chat Usage Status */}
+      {isAuthenticated && (
+        <div className="bg-dark-secondary rounded-2xl p-6 mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">AI Chat Usage</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-gray-300">
+                Today's Usage: {chatData.chatSessionsToday} of {chatData.chatLimit} sessions
+              </p>
+              <p className="text-sm text-gray-400">
+                Resets in {chatData.timeUntilReset}
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-400">
+                {chatData.canStartChat ? 'Available' : 'Limit Reached'}
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-dark-tertiary rounded-full h-2">
+            <div 
+              className="bg-purple-primary h-2 rounded-full transition-all duration-300"
+              style={{ 
+                width: `${(chatData.chatSessionsToday / chatData.chatLimit) * 100}%` 
+              }}
+            />
+          </div>
+          {role === 'free' && chatData.chatSessionsToday >= chatData.chatLimit && (
+            <div className="mt-4 p-3 bg-yellow-primary/10 border border-yellow-primary/20 rounded-lg">
+              <p className="text-sm text-yellow-primary">
+                💡 Upgrade to BrevEdu Plus for 3 AI chat sessions per day instead of 1!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="bg-dark-secondary rounded-2xl p-6 mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">Quick Actions</h2>
@@ -224,6 +271,7 @@ const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
             </div>
           </button>
           <button 
+            onClick={() => window.location.href = '/brevedu-plus'}
             className={`flex items-center space-x-3 p-4 rounded-xl transition-colors ${
               isSupabaseReachable
                 ? 'bg-dark-tertiary hover:bg-dark-accent'
@@ -233,31 +281,81 @@ const Profile: React.FC<ProfileProps> = ({ onAuthClick }) => {
           >
             <Crown className="w-6 h-6 text-yellow-primary" />
             <div className="text-left">
-              <div className="text-white font-medium">Upgrade to Plus</div>
+              <div className="text-white font-medium">
+                {role === 'premium' ? 'Manage Plus' : 'Upgrade to Plus'}
+              </div>
               <div className="text-gray-400 text-sm">
-                {isSupabaseReachable ? 'Unlock premium features' : 'Unavailable offline'}
+                {isSupabaseReachable 
+                  ? (role === 'premium' ? 'Manage your subscription' : 'Unlock premium features')
+                  : 'Unavailable offline'
+                }
               </div>
             </div>
           </button>
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Chat Sessions */}
       <div className="bg-dark-secondary rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
-        <div className="text-center py-8">
-          <div className="text-gray-400 mb-4">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>
-              {!isSupabaseReachable ? 'Activity unavailable while offline' :
-               isAuthenticated ? 'No recent activity' : 'Sign in to see your activity'}
-            </p>
-            <p className="text-sm">
-              {!isSupabaseReachable ? 'Check your connection and try again' :
-               isAuthenticated ? 'Start learning to see your progress here' : 'Track your learning journey'}
-            </p>
+        <h2 className="text-xl font-semibold text-white mb-4">Recent AI Chat Sessions</h2>
+        {!isSupabaseReachable ? (
+          <div className="text-center py-8">
+            <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-50" />
+            <p className="text-gray-400">Chat history unavailable while offline</p>
+            <p className="text-sm text-gray-500">Check your connection and try again</p>
           </div>
-        </div>
+        ) : !isAuthenticated ? (
+          <div className="text-center py-8">
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-50" />
+            <p className="text-gray-400">Sign in to see your chat history</p>
+            <p className="text-sm text-gray-500">Track your AI practice sessions</p>
+          </div>
+        ) : sessionsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="animate-pulse">
+                <div className="h-16 bg-dark-tertiary rounded-lg"></div>
+              </div>
+            ))}
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-8">
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-400 opacity-50" />
+            <p className="text-gray-400">No chat sessions yet</p>
+            <p className="text-sm text-gray-500">Start learning to see your AI practice sessions here</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sessions.slice(0, 5).map((session) => (
+              <div key={session.id} className="bg-dark-tertiary rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-medium">{session.topic}</h3>
+                    <p className="text-sm text-gray-400">{session.user_objective}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(session.started_at).toLocaleDateString()} • {session.difficulty_level}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      session.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                      session.status === 'active' ? 'bg-blue-500/20 text-blue-400' :
+                      session.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {session.status}
+                    </span>
+                    {session.duration_seconds && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Math.floor(session.duration_seconds / 60)}:{(session.duration_seconds % 60).toString().padStart(2, '0')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

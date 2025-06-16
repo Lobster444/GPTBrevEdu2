@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { X, Play, MessageCircle, Clock, User, Star, AlertCircle, Crown } from 'lucide-react';
 import { useUserAccess } from '../../hooks/useUserAccess';
+import { useChatSessions } from '../../hooks/useChatSessions';
+import { ChatSession } from '../../types/tavus';
+import ChatSetupModal from './ChatSetupModal';
+import ChatSessionModal from './ChatSessionModal';
 
 interface CourseModalProps {
   isOpen: boolean;
@@ -146,8 +150,13 @@ const CourseModal: React.FC<CourseModalProps> = ({
   onAuthRequired,
 }) => {
   const { role, isAuthenticated, canAccessPremiumContent, chatData } = useUserAccess();
+  const { createSession, endSession } = useChatSessions();
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState(false);
+  const [chatSetupModal, setChatSetupModal] = useState(false);
+  const [chatSessionModal, setChatSessionModal] = useState(false);
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
 
   // Debug logging
   console.log('CourseModal: Rendering with props:', { isOpen, courseId });
@@ -170,6 +179,10 @@ const CourseModal: React.FC<CourseModalProps> = ({
     } else {
       console.log('CourseModal: Modal is closing, restoring body overflow');
       document.body.style.overflow = 'unset';
+      // Reset chat modals when main modal closes
+      setChatSetupModal(false);
+      setChatSessionModal(false);
+      setCurrentSession(null);
     }
 
     return () => {
@@ -192,9 +205,40 @@ const CourseModal: React.FC<CourseModalProps> = ({
       return;
     }
 
-    // Start AI chat session
-    console.log('CourseModal: Starting AI chat session for course:', courseId);
-    // In a real app, this would create a chat session and navigate to chat interface
+    // Open chat setup modal
+    setChatSetupModal(true);
+  };
+
+  const handleStartChat = async (input: any) => {
+    try {
+      setIsCreatingSession(true);
+      console.log('Starting chat session with input:', input);
+      
+      const session = await createSession(input);
+      console.log('Chat session created:', session);
+      
+      setCurrentSession(session);
+      setChatSetupModal(false);
+      setChatSessionModal(true);
+    } catch (error) {
+      console.error('Error starting chat session:', error);
+      throw error;
+    } finally {
+      setIsCreatingSession(false);
+    }
+  };
+
+  const handleSessionEnd = async () => {
+    if (currentSession) {
+      try {
+        await endSession(currentSession.id);
+        console.log('Session ended successfully');
+      } catch (error) {
+        console.error('Error ending session:', error);
+      }
+    }
+    setChatSessionModal(false);
+    setCurrentSession(null);
   };
 
   const handleVideoLoad = () => {
@@ -263,208 +307,228 @@ const CourseModal: React.FC<CourseModalProps> = ({
   const chatButtonState = getChatButtonState();
 
   return (
-    <div 
-      className="fixed inset-0 z-[9997] overflow-y-auto"
-      onClick={handleBackdropClick}
-    >
-      <div className="flex min-h-screen items-center justify-center p-4">
-        {/* Backdrop */}
-        <div 
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
-          onClick={handleBackdropClick}
-        />
+    <>
+      <div 
+        className="fixed inset-0 z-[9997] overflow-y-auto"
+        onClick={handleBackdropClick}
+      >
+        <div className="flex min-h-screen items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={handleBackdropClick}
+          />
 
-        {/* Modal */}
-        <div 
-          className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-modal animate-scale-in"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Close Button */}
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm"
-            aria-label="Close modal"
+          {/* Modal */}
+          <div 
+            className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-modal animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="w-6 h-6" />
-          </button>
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm"
+              aria-label="Close modal"
+            >
+              <X className="w-6 h-6" />
+            </button>
 
-          {/* Content */}
-          <div className="overflow-y-auto max-h-[90vh]">
-            <div className="p-6">
-              {/* Course Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-purple-primary text-sm font-medium bg-purple-primary/10 px-3 py-1 rounded-full">
-                    {course.category}
-                  </span>
-                  {course.isPremium && (
-                    <span className="bg-yellow-primary text-black px-2 py-1 rounded-lg text-xs font-semibold">
-                      PLUS
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[90vh]">
+              <div className="p-6">
+                {/* Course Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-purple-primary text-sm font-medium bg-purple-primary/10 px-3 py-1 rounded-full">
+                      {course.category}
                     </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Premium Content Gate */}
-              {course.isPremium && !canAccessCourse && (
-                <div className="bg-gradient-to-r from-yellow-primary/10 to-orange-500/10 border border-yellow-primary/20 rounded-xl p-6 mb-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Crown className="w-6 h-6 text-yellow-primary" />
-                    <h3 className="text-lg font-semibold text-white">Premium Content</h3>
-                  </div>
-                  <p className="text-gray-300 mb-4">
-                    This course is part of BrevEdu Plus. Upgrade to access premium content and get more AI chat sessions.
-                  </p>
-                  <button
-                    onClick={() => window.location.href = '/brevedu-plus'}
-                    className="bg-yellow-primary hover:bg-yellow-dark text-black px-6 py-2 rounded-lg font-semibold transition-colors"
-                  >
-                    Upgrade to BrevEdu Plus
-                  </button>
-                </div>
-              )}
-
-              {/* Video Section */}
-              <div className="mb-6">
-                <div className="relative bg-black rounded-xl overflow-hidden mb-4">
-                  <div className="aspect-video">
-                    {!canAccessCourse ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
-                        <Crown className="w-16 h-16 text-yellow-primary mb-4" />
-                        <h3 className="text-lg font-semibold text-white mb-2">Premium Content</h3>
-                        <p className="text-gray-400 mb-4">
-                          Upgrade to BrevEdu Plus to watch this course
-                        </p>
-                        <button
-                          onClick={() => window.location.href = '/brevedu-plus'}
-                          className="bg-yellow-primary hover:bg-yellow-dark text-black px-4 py-2 rounded-lg transition-colors"
-                        >
-                          Upgrade Now
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {isVideoLoading && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-dark-tertiary">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-primary"></div>
-                          </div>
-                        )}
-                        
-                        {videoError ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
-                            <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
-                            <h3 className="text-lg font-semibold text-white mb-2">Video Unavailable</h3>
-                            <p className="text-gray-400 mb-4">
-                              Sorry, this video is currently unavailable. Please try again later.
-                            </p>
-                            <button
-                              onClick={() => {
-                                setVideoError(false);
-                                setIsVideoLoading(true);
-                              }}
-                              className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg transition-colors"
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        ) : (
-                          <iframe
-                            src={`https://www.youtube-nocookie.com/embed/${course.videoId}?modestbranding=1&rel=0`}
-                            title={course.title}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            onLoad={handleVideoLoad}
-                            onError={handleVideoError}
-                          />
-                        )}
-                      </>
+                    {course.isPremium && (
+                      <span className="bg-yellow-primary text-black px-2 py-1 rounded-lg text-xs font-semibold">
+                        PLUS
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Course Info */}
-                <div className="mb-6">
-                  <h1 className="text-2xl font-bold text-white mb-3">
-                    {course.title}
-                  </h1>
-                  <div className="flex items-center space-x-6 text-sm text-gray-400 mb-4">
-                    <div className="flex items-center space-x-1">
-                      <User className="w-4 h-4" />
-                      <span>{course.instructor}</span>
+                {/* Premium Content Gate */}
+                {course.isPremium && !canAccessCourse && (
+                  <div className="bg-gradient-to-r from-yellow-primary/10 to-orange-500/10 border border-yellow-primary/20 rounded-xl p-6 mb-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <Crown className="w-6 h-6 text-yellow-primary" />
+                      <h3 className="text-lg font-semibold text-white">Premium Content</h3>
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{course.duration}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Play className="w-4 h-4" />
-                      <span>{course.views} views</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Star className="w-4 h-4 text-yellow-primary" />
-                      <span>{course.rating}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <span className="text-xs bg-dark-tertiary px-2 py-1 rounded">
-                        {course.difficulty}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* AI Chat CTA */}
-                <div className="bg-gradient-to-r from-purple-primary to-pink-500 rounded-xl p-6 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-white mb-2">
-                        Practice with AI Coach
-                      </h3>
-                      <p className="text-gray-200 mb-3">
-                        Have a personalized conversation about {course.title.toLowerCase()} with our AI to reinforce your learning
-                      </p>
-                      <div className="text-sm text-gray-300">
-                        <span>{chatButtonState.message}</span>
-                      </div>
-                    </div>
+                    <p className="text-gray-300 mb-4">
+                      This course is part of BrevEdu Plus. Upgrade to access premium content and get more AI chat sessions.
+                    </p>
                     <button
-                      onClick={chatButtonState.action}
-                      className={`ml-4 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 ${
-                        chatButtonState.disabled
-                          ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                          : 'bg-white text-purple-primary hover:bg-gray-100'
-                      }`}
-                      disabled={chatButtonState.disabled}
+                      onClick={() => window.location.href = '/brevedu-plus'}
+                      className="bg-yellow-primary hover:bg-yellow-dark text-black px-6 py-2 rounded-lg font-semibold transition-colors"
                     >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>{chatButtonState.text}</span>
+                      Upgrade to BrevEdu Plus
                     </button>
                   </div>
-                </div>
+                )}
 
-                {/* Description */}
+                {/* Video Section */}
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-3">About This Course</h3>
-                  <p className="text-gray-300 leading-relaxed mb-4">
-                    {course.description}
-                  </p>
-                  
-                  <h4 className="text-md font-medium text-white mb-3">What You'll Learn:</h4>
-                  <ul className="space-y-2">
-                    {course.keyPoints.map((point, index) => (
-                      <li key={index} className="flex items-start space-x-3 text-gray-300">
-                        <div className="w-2 h-2 bg-purple-primary rounded-full flex-shrink-0 mt-2" />
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="relative bg-black rounded-xl overflow-hidden mb-4">
+                    <div className="aspect-video">
+                      {!canAccessCourse ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
+                          <Crown className="w-16 h-16 text-yellow-primary mb-4" />
+                          <h3 className="text-lg font-semibold text-white mb-2">Premium Content</h3>
+                          <p className="text-gray-400 mb-4">
+                            Upgrade to BrevEdu Plus to watch this course
+                          </p>
+                          <button
+                            onClick={() => window.location.href = '/brevedu-plus'}
+                            className="bg-yellow-primary hover:bg-yellow-dark text-black px-4 py-2 rounded-lg transition-colors"
+                          >
+                            Upgrade Now
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {isVideoLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-dark-tertiary">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-primary"></div>
+                            </div>
+                          )}
+                          
+                          {videoError ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-dark-tertiary text-center p-8">
+                              <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
+                              <h3 className="text-lg font-semibold text-white mb-2">Video Unavailable</h3>
+                              <p className="text-gray-400 mb-4">
+                                Sorry, this video is currently unavailable. Please try again later.
+                              </p>
+                              <button
+                                onClick={() => {
+                                  setVideoError(false);
+                                  setIsVideoLoading(true);
+                                }}
+                                className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg transition-colors"
+                              >
+                                Retry
+                              </button>
+                            </div>
+                          ) : (
+                            <iframe
+                              src={`https://www.youtube-nocookie.com/embed/${course.videoId}?modestbranding=1&rel=0`}
+                              title={course.title}
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              onLoad={handleVideoLoad}
+                              onError={handleVideoError}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Course Info */}
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-white mb-3">
+                      {course.title}
+                    </h1>
+                    <div className="flex items-center space-x-6 text-sm text-gray-400 mb-4">
+                      <div className="flex items-center space-x-1">
+                        <User className="w-4 h-4" />
+                        <span>{course.instructor}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{course.duration}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Play className="w-4 h-4" />
+                        <span>{course.views} views</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Star className="w-4 h-4 text-yellow-primary" />
+                        <span>{course.rating}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span className="text-xs bg-dark-tertiary px-2 py-1 rounded">
+                          {course.difficulty}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AI Chat CTA */}
+                  <div className="bg-gradient-to-r from-purple-primary to-pink-500 rounded-xl p-6 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-semibold text-white mb-2">
+                          Practice with AI Coach
+                        </h3>
+                        <p className="text-gray-200 mb-3">
+                          Have a personalized conversation about {course.title.toLowerCase()} with our AI to reinforce your learning
+                        </p>
+                        <div className="text-sm text-gray-300">
+                          <span>{chatButtonState.message}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={chatButtonState.action}
+                        className={`ml-4 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 ${
+                          chatButtonState.disabled
+                            ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                            : 'bg-white text-purple-primary hover:bg-gray-100'
+                        }`}
+                        disabled={chatButtonState.disabled}
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span>{chatButtonState.text}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-white mb-3">About This Course</h3>
+                    <p className="text-gray-300 leading-relaxed mb-4">
+                      {course.description}
+                    </p>
+                    
+                    <h4 className="text-md font-medium text-white mb-3">What You'll Learn:</h4>
+                    <ul className="space-y-2">
+                      {course.keyPoints.map((point, index) => (
+                        <li key={index} className="flex items-start space-x-3 text-gray-300">
+                          <div className="w-2 h-2 bg-purple-primary rounded-full flex-shrink-0 mt-2" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Chat Setup Modal */}
+      <ChatSetupModal
+        isOpen={chatSetupModal}
+        onClose={() => setChatSetupModal(false)}
+        onStartChat={handleStartChat}
+        courseTitle={course?.title}
+        courseId={course?.id}
+        isLoading={isCreatingSession}
+      />
+
+      {/* Chat Session Modal */}
+      <ChatSessionModal
+        isOpen={chatSessionModal}
+        onClose={() => setChatSessionModal(false)}
+        session={currentSession}
+        onSessionEnd={handleSessionEnd}
+      />
+    </>
   );
 };
 
