@@ -96,8 +96,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
     
     const message = error.message?.toLowerCase() || '';
     
-    if (message.includes('user already registered')) {
-      return 'An account with this email already exists. Try signing in instead.';
+    if (message.includes('user already registered') || message.includes('user_already_exists')) {
+      return 'An account with this email already exists. Please sign in instead.';
     }
     if (message.includes('invalid login credentials')) {
       return 'Invalid email or password. Please check your credentials.';
@@ -163,8 +163,21 @@ const AuthModal: React.FC<AuthModalProps> = ({
     } catch (error: any) {
       console.error('Auth error:', error);
       const errorMessage = getSupabaseErrorMessage(error);
-      setErrors({ general: errorMessage });
-      showToast(errorMessage, 'error');
+      
+      // Check if it's a "user already exists" error during signup
+      const isUserExistsError = error.message?.toLowerCase().includes('user already registered') || 
+                               error.message?.toLowerCase().includes('user_already_exists');
+      
+      if (mode === 'signup' && isUserExistsError) {
+        setErrors({ 
+          general: errorMessage,
+          userExists: 'true' // Flag to show the switch to login button
+        });
+        showToast(errorMessage, 'error');
+      } else {
+        setErrors({ general: errorMessage });
+        showToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -209,7 +222,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
               {errors.general && (
                 <div className="bg-red-500 bg-opacity-10 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-4">
-                  {errors.general}
+                  <p>{errors.general}</p>
+                  {errors.userExists && mode === 'signup' && (
+                    <button
+                      onClick={onToggleMode}
+                      className="mt-2 text-purple-primary hover:text-purple-light font-medium underline transition-colors"
+                    >
+                      Switch to Sign In
+                    </button>
+                  )}
                 </div>
               )}
 
