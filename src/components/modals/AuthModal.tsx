@@ -216,24 +216,23 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <>
-      {/* Modal container */}
-      <div className="fixed inset-0 z-[9998] overflow-y-auto pointer-events-none">
-        <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 pointer-events-none">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300 animate-backdrop-fade pointer-events-auto"
-            onClick={onClose}
-            style={{ 
-              top: '64px' // Start below header
-            }}
-          />
+      {/* Modal Portal */}
+      <div className="fixed inset-0 z-[9998] overflow-y-auto">
+        {/* Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300"
+          onClick={onClose}
+          aria-hidden="true"
+        />
 
-          {/* Modal */}
-          <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal animate-scale-in pointer-events-auto" style={{ marginTop: '64px' }}>
+        {/* Modal Container - Centered with proper spacing */}
+        <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+          {/* Modal Content */}
+          <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal transition-all duration-300 transform scale-100">
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center pointer-events-auto"
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm hover:bg-black/70"
               disabled={isLoading}
               aria-label="Close modal"
             >
@@ -243,8 +242,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
             {/* Content */}
             <div className="p-6 sm:p-8">
               {/* Header */}
-              <div className="mb-6">
-                <h2 className="text-28 font-semibold text-white mb-2">
+              <div className="mb-6 pr-10">
+                <h2 className="text-2xl sm:text-3xl font-semibold text-white mb-2">
                   {mode === 'login' ? 'Welcome Back' : 'Create Account'}
                 </h2>
                 <p className="text-base text-gray-text">
@@ -344,7 +343,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isFormDisabled}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50"
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
@@ -376,7 +375,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         disabled={isFormDisabled}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50 min-w-[20px] min-h-[20px] flex items-center justify-center"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-placeholder hover:text-gray-300 disabled:opacity-50"
                       >
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>

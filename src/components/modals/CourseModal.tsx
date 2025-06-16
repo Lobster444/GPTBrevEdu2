@@ -308,36 +308,38 @@ const CourseModal: React.FC<CourseModalProps> = ({
 
   return (
     <>
+      {/* Modal Portal */}
       <div 
-        className="fixed inset-0 z-[9997] overflow-y-auto"
+        className="fixed inset-0 z-[9999] overflow-y-auto"
         onClick={handleBackdropClick}
       >
-        <div className="flex min-h-screen items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
-            onClick={handleBackdropClick}
-          />
+        {/* Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300"
+          aria-hidden="true"
+        />
 
-          {/* Modal */}
+        {/* Modal Container - Centered with proper spacing */}
+        <div className="flex min-h-full items-center justify-center p-4 sm:p-6 lg:p-8">
+          {/* Modal Content */}
           <div 
-            className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-modal animate-scale-in"
+            className="relative bg-dark-secondary rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-modal transition-all duration-300 transform scale-100"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
+            {/* Close Button - Fixed position */}
             <button
               onClick={handleClose}
-              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm"
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors bg-black/50 backdrop-blur-sm hover:bg-black/70"
               aria-label="Close modal"
             >
               <X className="w-6 h-6" />
             </button>
 
-            {/* Content */}
-            <div className="overflow-y-auto max-h-[90vh]">
-              <div className="p-6">
+            {/* Scrollable Content Container */}
+            <div className="overflow-y-auto max-h-[90vh] rounded-2xl">
+              <div className="p-4 sm:p-6 lg:p-8">
                 {/* Course Header */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-3">
                     <span className="text-purple-primary text-sm font-medium bg-purple-primary/10 px-3 py-1 rounded-full">
                       {course.category}
@@ -348,6 +350,8 @@ const CourseModal: React.FC<CourseModalProps> = ({
                       </span>
                     )}
                   </div>
+                  {/* Spacer for close button */}
+                  <div className="w-10"></div>
                 </div>
 
                 {/* Premium Content Gate */}
@@ -430,10 +434,10 @@ const CourseModal: React.FC<CourseModalProps> = ({
 
                   {/* Course Info */}
                   <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-white mb-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
                       {course.title}
                     </h1>
-                    <div className="flex items-center space-x-6 text-sm text-gray-400 mb-4">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-4">
                       <div className="flex items-center space-x-1">
                         <User className="w-4 h-4" />
                         <span>{course.instructor}</span>
@@ -459,10 +463,10 @@ const CourseModal: React.FC<CourseModalProps> = ({
                   </div>
 
                   {/* AI Chat CTA */}
-                  <div className="bg-gradient-to-r from-purple-primary to-pink-500 rounded-xl p-6 mb-6">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-purple-primary to-pink-500 rounded-xl p-4 sm:p-6 mb-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-white mb-2">
+                        <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
                           Practice with AI Coach
                         </h3>
                         <p className="text-gray-200 mb-3">
@@ -474,7 +478,7 @@ const CourseModal: React.FC<CourseModalProps> = ({
                       </div>
                       <button
                         onClick={chatButtonState.action}
-                        className={`ml-4 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 ${
+                        className={`w-full sm:w-auto px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center space-x-2 ${
                           chatButtonState.disabled
                             ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                             : 'bg-white text-purple-primary hover:bg-gray-100'
@@ -482,7 +486,7 @@ const CourseModal: React.FC<CourseModalProps> = ({
                         disabled={chatButtonState.disabled}
                       >
                         <MessageCircle className="w-5 h-5" />
-                        <span>{chatButtonState.text}</span>
+                        <span className="whitespace-nowrap">{chatButtonState.text}</span>
                       </button>
                     </div>
                   </div>

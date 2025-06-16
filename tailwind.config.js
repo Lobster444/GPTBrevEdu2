@@ -14,15 +14,25 @@ export default {
           primary: '#8B5CF6',
           light: '#A78BFA',
           dark: '#7C3AED',
+          modal: '#A855F7',
+          'modal-hover': '#9333EA',
         },
         yellow: {
           primary: '#FCD34D',
           light: '#FDE68A',
           dark: '#F59E0B',
         },
+        gray: {
+          text: '#D1D5DB',
+          input: '#374151',
+          placeholder: '#9CA3AF',
+        },
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+      },
+      fontSize: {
+        '28': '1.75rem',
       },
       spacing: {
         '18': '4.5rem',
@@ -32,7 +42,7 @@ export default {
       zIndex: {
         '9997': '9997', // Course modal backdrop
         '9998': '9998', // Auth modal backdrop  
-        '9999': '9999', // Header
+        '9999': '9999', // Header and highest modals
         '10000': '10000', // Modal content
         '10001': '10001', // Modal close buttons and interactive elements
       },
@@ -52,7 +62,7 @@ export default {
           '100%': { opacity: '1' },
         },
         scaleIn: {
-          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
         backdropFade: {
