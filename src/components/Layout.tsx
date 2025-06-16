@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Header from './Header'
-import { MobileNav } from './MobileNav'
+import MobileNav from './MobileNav'
 import { ConnectionBanner } from './ui/ConnectionBanner'
 import { useAuth } from '../hooks/useAuth'
 
