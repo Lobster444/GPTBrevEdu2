@@ -42,7 +42,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 // Test connection function with improved timeout handling
-export const testConnection = async (timeoutMs = 30000): Promise<boolean> => {
+export const testConnection = async (timeoutMs = 60000): Promise<boolean> => {
   try {
     console.log('🔄 Testing Supabase connection...')
     
@@ -75,7 +75,7 @@ export interface Profile {
 
 // Database helpers with improved timeout protection
 export const dbHelpers = {
-  async getProfile(userId: string, timeoutMs = 30000): Promise<{ data: Profile | null; error: any }> {
+  async getProfile(userId: string, timeoutMs = 60000): Promise<{ data: Profile | null; error: any }> {
     try {
       console.log('🔄 Fetching profile for user:', userId)
       
