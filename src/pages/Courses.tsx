@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, ArrowRight, Play } from 'lucide-react';
 import { useUserAccess } from '../hooks/useUserAccess';
 import AccessGate from '../components/AccessGate';
+import { courses, courseCategories, getCoursesByCategory, searchCourses } from '../data/courses';
 
 interface CoursesProps {
   onCourseClick?: (courseId: string) => void;
@@ -21,77 +22,20 @@ const Courses: React.FC<CoursesProps> = ({ onCourseClick, onAuthClick }) => {
     }
   }, [role]);
 
-  const categories = [
-    { id: 'all', name: 'All Courses' },
-    { id: 'communication', name: 'Communication' },
-    { id: 'productivity', name: 'Productivity' },
-    { id: 'business', name: 'Business' },
-    { id: 'leadership', name: 'Leadership' },
-  ];
+  // Get filtered courses from centralized data
+  const getFilteredCourses = () => {
+    let filteredCourses = getCoursesByCategory(selectedCategory);
+    
+    if (searchTerm.trim()) {
+      filteredCourses = searchCourses(searchTerm).filter(course => 
+        selectedCategory === 'all' || course.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+    }
+    
+    return filteredCourses;
+  };
 
-  const allCourses = [
-    {
-      id: '1',
-      title: 'Public Speaking Mastery',
-      duration: '4 min',
-      thumbnail: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'communication',
-      description: 'Overcome fear and speak with confidence',
-      isPremium: false,
-    },
-    {
-      id: '2',
-      title: 'Time Management Hacks',
-      duration: '3 min',
-      thumbnail: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'productivity',
-      description: 'Get more done in less time',
-      isPremium: true,
-    },
-    {
-      id: '3',
-      title: 'Negotiation Basics',
-      duration: '5 min',
-      thumbnail: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'business',
-      description: 'Win-win strategies that work',
-      isPremium: false,
-    },
-    {
-      id: '4',
-      title: 'Email Productivity',
-      duration: '3 min',
-      thumbnail: 'https://images.pexels.com/photos/4348401/pexels-photo-4348401.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'productivity',
-      description: 'Master your inbox in minutes',
-      isPremium: true,
-    },
-    {
-      id: '5',
-      title: 'Team Leadership',
-      duration: '4 min',
-      thumbnail: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'leadership',
-      description: 'Lead with impact and influence',
-      isPremium: false,
-    },
-    {
-      id: '6',
-      title: 'Active Listening',
-      duration: '2 min',
-      thumbnail: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'communication',
-      description: 'Connect deeper through listening',
-      isPremium: true,
-    },
-  ];
-
-  const filteredCourses = allCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredCourses = getFilteredCourses();
 
   const handleCourseClick = (courseId: string) => {
     console.log('Courses: Course clicked:', courseId);
@@ -164,7 +108,7 @@ const Courses: React.FC<CoursesProps> = ({ onCourseClick, onAuthClick }) => {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="bg-dark-secondary border border-dark-tertiary rounded-xl pl-10 pr-8 py-3 text-white focus:outline-none focus:border-purple-primary transition-colors appearance-none cursor-pointer"
             >
-              {categories.map(category => (
+              {courseCategories.map(category => (
                 <option key={category.id} value={category.id} className="bg-dark-secondary">
                   {category.name}
                 </option>
@@ -209,7 +153,10 @@ const Courses: React.FC<CoursesProps> = ({ onCourseClick, onAuthClick }) => {
                   {course.title}
                 </h3>
                 <p className="text-gray-400 text-sm mb-3">
-                  {course.description}
+                  {course.description.length > 80 
+                    ? `${course.description.substring(0, 80)}...` 
+                    : course.description
+                  }
                 </p>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400 text-sm">Watch & Learn</span>

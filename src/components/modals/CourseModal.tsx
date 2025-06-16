@@ -5,6 +5,7 @@ import { useChatSessions } from '../../hooks/useChatSessions';
 import { ChatSession } from '../../types/tavus';
 import ChatSetupModal from './ChatSetupModal';
 import ChatSessionModal from './ChatSessionModal';
+import { getCourseById } from '../../data/courses';
 
 interface CourseModalProps {
   isOpen: boolean;
@@ -12,136 +13,6 @@ interface CourseModalProps {
   onClose: () => void;
   onAuthRequired: (mode: 'login' | 'signup') => void;
 }
-
-// Mock course data - in a real app, this would come from the database
-const mockCourses = {
-  '1': {
-    id: '1',
-    title: 'Public Speaking Mastery',
-    description: 'Master the art of public speaking with proven techniques to overcome fear and speak with confidence. Learn body language, voice control, and audience engagement strategies that will transform your communication skills.',
-    duration: '4 min',
-    thumbnail: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ', // YouTube video ID
-    category: 'Communication',
-    instructor: 'Sarah Johnson',
-    difficulty: 'Beginner',
-    keyPoints: [
-      'Overcome speaking anxiety and nervousness',
-      'Master confident body language and posture',
-      'Engage your audience effectively',
-      'Structure compelling presentations',
-      'Use voice control and pacing techniques'
-    ],
-    isPremium: false,
-    views: '12.5k',
-    rating: 4.8,
-  },
-  '2': {
-    id: '2',
-    title: 'Time Management Hacks',
-    description: 'Discover powerful time management strategies that will help you get more done in less time. Learn prioritization techniques, productivity systems, and how to eliminate time-wasting activities.',
-    duration: '3 min',
-    thumbnail: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ',
-    category: 'Productivity',
-    instructor: 'Mike Chen',
-    difficulty: 'Intermediate',
-    keyPoints: [
-      'Priority matrix and task categorization',
-      'Time blocking and calendar management',
-      'Eliminate distractions and time wasters',
-      'Energy management throughout the day',
-      'Automation and delegation strategies'
-    ],
-    isPremium: true,
-    views: '8.2k',
-    rating: 4.9,
-  },
-  '3': {
-    id: '3',
-    title: 'Negotiation Basics',
-    description: 'Learn fundamental negotiation skills that create win-win outcomes. Understand psychology, preparation strategies, and communication techniques that lead to successful negotiations.',
-    duration: '5 min',
-    thumbnail: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ',
-    category: 'Business',
-    instructor: 'Lisa Rodriguez',
-    difficulty: 'Beginner',
-    keyPoints: [
-      'Preparation and research strategies',
-      'Understanding the other party\'s needs',
-      'Creating win-win solutions',
-      'Handling objections and pushback',
-      'Closing and follow-up techniques'
-    ],
-    isPremium: false,
-    views: '15.1k',
-    rating: 4.7,
-  },
-  '4': {
-    id: '4',
-    title: 'Email Productivity',
-    description: 'Transform your email management with proven systems and techniques. Learn inbox zero methodology, email templates, and automation strategies to save hours each week.',
-    duration: '3 min',
-    thumbnail: 'https://images.pexels.com/photos/4348401/pexels-photo-4348401.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ',
-    category: 'Productivity',
-    instructor: 'David Park',
-    difficulty: 'Beginner',
-    keyPoints: [
-      'Inbox Zero methodology',
-      'Email templates and signatures',
-      'Filtering and automation rules',
-      'Scheduling and batching emails',
-      'Mobile email management'
-    ],
-    isPremium: true,
-    views: '6.8k',
-    rating: 4.6,
-  },
-  '5': {
-    id: '5',
-    title: 'Team Leadership',
-    description: 'Develop essential leadership skills to inspire and guide your team to success. Learn communication, motivation, and decision-making strategies that create high-performing teams.',
-    duration: '4 min',
-    thumbnail: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ',
-    category: 'Leadership',
-    instructor: 'Jennifer Kim',
-    difficulty: 'Intermediate',
-    keyPoints: [
-      'Building trust and rapport',
-      'Effective delegation strategies',
-      'Motivating team members',
-      'Conflict resolution techniques',
-      'Performance feedback and coaching'
-    ],
-    isPremium: false,
-    views: '11.3k',
-    rating: 4.8,
-  },
-  '6': {
-    id: '6',
-    title: 'Active Listening',
-    description: 'Master the art of active listening to build stronger relationships and improve communication. Learn techniques to truly understand others and respond more effectively.',
-    duration: '2 min',
-    thumbnail: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-    videoId: 'dQw4w9WgXcQ',
-    category: 'Communication',
-    instructor: 'Alex Thompson',
-    difficulty: 'Beginner',
-    keyPoints: [
-      'Non-verbal communication cues',
-      'Asking clarifying questions',
-      'Paraphrasing and summarizing',
-      'Avoiding interruptions and distractions',
-      'Empathetic responding techniques'
-    ],
-    isPremium: true,
-    views: '9.7k',
-    rating: 4.9,
-  },
-};
 
 const CourseModal: React.FC<CourseModalProps> = ({
   isOpen,
@@ -163,8 +34,8 @@ const CourseModal: React.FC<CourseModalProps> = ({
   console.log('CourseModal: Modal should be visible:', isOpen);
   console.log('CourseModal: User access data:', { role, isAuthenticated, canAccessPremiumContent, chatData });
 
-  // Get course data
-  const course = courseId ? mockCourses[courseId as keyof typeof mockCourses] : null;
+  // Get course data from centralized source
+  const course = courseId ? getCourseById(courseId) : null;
 
   console.log('CourseModal: Course data:', course);
 

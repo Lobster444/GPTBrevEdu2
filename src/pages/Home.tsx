@@ -3,6 +3,7 @@ import { Play, MessageCircle, ArrowRight } from 'lucide-react';
 import { useUserAccess } from '../hooks/useUserAccess';
 import { Link } from 'react-router-dom';
 import AccessGate from '../components/AccessGate';
+import { getFeaturedCourses, getPremiumCourses } from '../data/courses';
 
 interface HomeProps {
   onCourseClick?: (courseId: string) => void;
@@ -13,65 +14,13 @@ const Home: React.FC<HomeProps> = ({ onCourseClick, onAuthClick }) => {
   const [activeToggle, setActiveToggle] = useState<'all' | 'plus'>('all');
   const { role, isAuthenticated, canAccessPremiumContent } = useUserAccess();
 
-  const featuredCourses = [
-    {
-      id: '1',
-      title: 'Public Speaking Mastery',
-      duration: '4 min',
-      thumbnail: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Communication',
-      isPremium: false,
-    },
-    {
-      id: '2',
-      title: 'Time Management Hacks',
-      duration: '3 min',
-      thumbnail: 'https://images.pexels.com/photos/1181677/pexels-photo-1181677.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Productivity',
-      isPremium: true,
-    },
-    {
-      id: '3',
-      title: 'Negotiation Basics',
-      duration: '5 min',
-      thumbnail: 'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Business',
-      isPremium: false,
-    },
-    {
-      id: '4',
-      title: 'Email Productivity',
-      duration: '3 min',
-      thumbnail: 'https://images.pexels.com/photos/4348401/pexels-photo-4348401.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Productivity',
-      isPremium: true,
-    },
-    {
-      id: '5',
-      title: 'Team Leadership',
-      duration: '4 min',
-      thumbnail: 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Leadership',
-      isPremium: false,
-    },
-    {
-      id: '6',
-      title: 'Active Listening',
-      duration: '2 min',
-      thumbnail: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=320&h=180&fit=crop',
-      category: 'Communication',
-      isPremium: true,
-    },
-  ];
+  // Get courses from centralized data
+  const featuredCourses = getFeaturedCourses();
+  const premiumCourses = getPremiumCourses();
 
   // Filter courses based on user role and toggle
   const getDisplayedCourses = () => {
-    let coursesToShow = featuredCourses;
-
-    // Filter by toggle (all vs plus)
-    if (activeToggle === 'plus') {
-      coursesToShow = coursesToShow.filter(course => course.isPremium);
-    }
+    let coursesToShow = activeToggle === 'plus' ? premiumCourses : featuredCourses;
 
     // For anonymous users, only show first 3 courses
     if (role === 'anonymous') {
