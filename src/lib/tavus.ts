@@ -1,3 +1,5 @@
+import { supabaseUrl } from './supabase'
+
 // CRITICAL: Validate environment variables
 const tavusApiKey = import.meta.env.VITE_TAVUS_API_KEY
 const tavusReplicaId = import.meta.env.VITE_TAVUS_REPLICA_ID
@@ -11,6 +13,12 @@ console.log('Tavus Environment Check:', {
   replicaId: tavusReplicaId ? `${tavusReplicaId.substring(0, 10)}...` : 'MISSING',
   personaId: tavusPersonaId ? `${tavusPersonaId.substring(0, 10)}...` : 'MISSING'
 })
+
+// Tavus configuration object
+export const tavusConfig = {
+  getReplicaId: () => tavusReplicaId,
+  getCallbackUrl: () => `${supabaseUrl}/functions/v1/tavus-webhook`
+}
 
 // Check if Tavus is properly configured
 export const isTavusConfigured = (): boolean => {
