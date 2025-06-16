@@ -207,21 +207,26 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <>
-      {/* Modal container with lower z-index than header (z-50 vs header's z-[60]) */}
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
-          {/* Backdrop - positioned below header */}
+      {/* CRITICAL FIX: Modal container with z-[9998] - just below header's z-[9999] */}
+      {/* Added pointer-events-none to container, pointer-events-auto to interactive elements */}
+      <div className="fixed inset-0 z-[9998] overflow-y-auto pointer-events-none">
+        <div className="flex min-h-screen items-center justify-center p-4 sm:p-6 pointer-events-none">
+          {/* Backdrop - CRITICAL FIX: Reduced backdrop-blur and added pointer-events-auto */}
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-md transition-all duration-300 animate-backdrop-fade"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300 animate-backdrop-fade pointer-events-auto"
             onClick={onClose}
+            style={{ 
+              // Ensure backdrop doesn't interfere with header clicks
+              top: '64px' // Start below header (header height is 64px)
+            }}
           />
 
-          {/* Modal */}
-          <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal animate-scale-in">
+          {/* Modal - CRITICAL FIX: Added pointer-events-auto and proper positioning */}
+          <div className="relative bg-dark-secondary rounded-2xl w-full max-w-md shadow-modal animate-scale-in pointer-events-auto" style={{ marginTop: '64px' }}>
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="absolute top-4 right-4 z-10 p-2 text-white hover:text-gray-300 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center pointer-events-auto"
               disabled={isLoading}
               aria-label="Close modal"
             >

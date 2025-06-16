@@ -41,6 +41,13 @@ export default {
       backdropBlur: {
         xs: '2px',
       },
+      // CRITICAL FIX: Enhanced z-index scale for proper stacking
+      zIndex: {
+        '9998': '9998',
+        '9999': '9999',
+        '10000': '10000',
+        '10001': '10001',
+      },
       animation: {
         'slide-up': 'slideUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
@@ -62,7 +69,7 @@ export default {
         },
         backdropFade: {
           '0%': { opacity: '0', backdropFilter: 'blur(0px)' },
-          '100%': { opacity: '1', backdropFilter: 'blur(8px)' },
+          '100%': { opacity: '1', backdropFilter: 'blur(4px)' },
         },
       },
       boxShadow: {

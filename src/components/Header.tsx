@@ -23,12 +23,13 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
   };
 
   return (
-    // Fixed z-index to be higher than modal backdrop (z-50) - using z-[60] to ensure it's always on top
-    <header className="bg-dark-primary border-b border-dark-tertiary sticky top-0 z-[60] relative">
+    // CRITICAL FIX: Use z-[9999] to ensure header is always above any modal/backdrop
+    // Added 'isolate' class to create proper stacking context
+    <header className="bg-dark-primary border-b border-dark-tertiary sticky top-0 z-[9999] isolate">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center space-x-2 group relative z-10">
             <div className="bg-purple-primary p-2 rounded-xl group-hover:scale-105 transition-transform">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
@@ -38,7 +39,7 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-1 relative z-10">
             <Link
               to="/"
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -72,8 +73,8 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
             </Link>
           </nav>
 
-          {/* Auth Section - Fixed conditional rendering and visibility */}
-          <div className="flex items-center space-x-3 relative z-10">
+          {/* Auth Section - CRITICAL FIX: Added z-[10] and pointer-events-auto */}
+          <div className="flex items-center space-x-3 relative z-[10] pointer-events-auto">
             {loading ? (
               <div className="w-8 h-8 animate-pulse bg-dark-secondary rounded-full"></div>
             ) : isAuthenticated && user ? (
@@ -94,7 +95,7 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 {/* Sign Out Button */}
                 <button
                   onClick={handleSignOut}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-dark-secondary"
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:flex items-center space-x-1 px-3 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -103,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 {/* Profile Link */}
                 <Link
                   to="/profile"
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-2 rounded-lg transition-colors pointer-events-auto ${
                     isActive('/profile') 
                       ? 'bg-purple-primary text-white' 
                       : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
@@ -113,24 +114,26 @@ const Header: React.FC<HeaderProps> = ({ onAuthClick }) => {
                 </Link>
               </>
             ) : (
-              // Non-authenticated user state - Fixed visibility and styling
+              // Non-authenticated user state - CRITICAL FIX: Enhanced visibility and click handling
               <>
                 <button
                   onClick={() => onAuthClick('login')}
-                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block px-4 py-2 rounded-lg hover:bg-dark-secondary"
+                  className="text-gray-300 hover:text-white text-sm font-medium transition-colors hidden sm:block px-4 py-2 rounded-lg hover:bg-dark-secondary pointer-events-auto relative z-[1]"
+                  style={{ zIndex: 10001 }} // Inline style as fallback
                 >
                   Sign In
                 </button>
                 <button
                   onClick={() => onAuthClick('signup')}
-                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold"
+                  className="bg-purple-primary hover:bg-purple-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors font-semibold pointer-events-auto relative z-[1]"
+                  style={{ zIndex: 10001 }} // Inline style as fallback
                 >
                   Get Started
                 </button>
                 {/* Profile Link for non-authenticated users */}
                 <Link
                   to="/profile"
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-2 rounded-lg transition-colors pointer-events-auto ${
                     isActive('/profile') 
                       ? 'bg-purple-primary text-white' 
                       : 'text-gray-300 hover:text-white hover:bg-dark-secondary'
