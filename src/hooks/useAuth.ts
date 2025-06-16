@@ -96,7 +96,7 @@ export const useAuth = () => {
           let profileError = null
           
           try {
-            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 10000)
+            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 30000)
             if (fetchError) {
               console.error('useAuth: Error getting profile:', fetchError)
               profileError = fetchError
@@ -165,8 +165,8 @@ export const useAuth = () => {
             // CRITICAL FIX: Don't block auth state update on profile fetch
             let profile = null
             try {
-              // TIMEOUT FIX: Use shorter timeout for auth state changes
-              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 10000)
+              // TIMEOUT FIX: Use longer timeout for auth state changes
+              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 30000)
               if (profileError) {
                 console.error('useAuth: Error getting profile after auth change:', profileError)
               } else {
