@@ -30,7 +30,7 @@ export const useAuth = () => {
         console.log('useAuth: Getting initial session...')
         
         // First test if Supabase is reachable
-        const isReachable = await testConnection(8000)
+        const isReachable = await testConnection(20000)
         
         if (!isReachable) {
           console.error('useAuth: Supabase is not reachable')
@@ -48,7 +48,7 @@ export const useAuth = () => {
         
         // CRITICAL FIX: Proper timeout handling with Promise.race
         const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 8000)
+          setTimeout(() => reject(new Error('Session timeout')), 20000)
         )
         
         const sessionPromise = supabase.auth.getSession()
@@ -81,7 +81,7 @@ export const useAuth = () => {
           let profileError = null
           
           try {
-            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 6000)
+            const { data: profileData, error: fetchError } = await dbHelpers.getProfile(session.user.id, 20000)
             if (fetchError) {
               console.error('useAuth: Error getting profile:', fetchError)
               profileError = fetchError
@@ -150,8 +150,8 @@ export const useAuth = () => {
             // CRITICAL FIX: Don't block auth state update on profile fetch
             let profile = null
             try {
-              // TIMEOUT FIX: Increase timeout from 6000ms to 10000ms for auth state changes
-              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 10000)
+              // TIMEOUT FIX: Increase timeout from 10000ms to 20000ms for auth state changes
+              const { data: profileData, error: profileError } = await dbHelpers.getProfile(session.user.id, 20000)
               if (profileError) {
                 console.error('useAuth: Error getting profile after auth change:', profileError)
               } else {
